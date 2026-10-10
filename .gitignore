@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.cache-test-*/
+.venv/
+.tools/
+bin/
+obj/
