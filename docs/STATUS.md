@@ -149,6 +149,7 @@
 - 源码核验：git ls-remote 读取 main 为 e288d8c7d769b654fd4ea32c4eae607ba3437832，与接口创建的提交一致。浏览器确认目录与 README。本机无可用 Git 推送凭据，使用已有连接器写入，远程提交历史由接口建立；原本地提交历史保留。
 - 测试分发：https://github.com/everink404/jellyfin-smart-cache/releases/tag/v0.1.0-test.1 ，标签指向 e288d8c；公开 Release 标记 Pre-release，附件为 JellyCache.Plugin_0.1.0.0.zip 与 SHA256SUMS.txt。发布复用 B-20261006-06 已验证包，SHA-256 未变。
 - 匿名复核：无认证下载安装包成功，MD5 fb4fee97ab6cf538f3689b83ffae7d91、SHA-256 bf9fbd5e3fe995b93187245295335d8d8b112d76b80a716502004f9393811707 与本地一致；公开 API 确认 prerelease=true、draft=false。根 manifest.json 由该包对应清单产生；README 与分发文档加入实际入口。
-- 清单入口：https://raw.githubusercontent.com/everink404/jellyfin-smart-cache/main/manifest.json 。清单上传及远程匿名读取检查完成后另附结果；不将本地生成当作已生效。
+- 清单入口：https://raw.githubusercontent.com/everink404/jellyfin-smart-cache/main/manifest.json 。已上传并匿名返回 HTTP 200；插件名、GUID、版本 0.1.0.0 和 ABI 12.1.0.0 核对通过。按远程清单 sourceUrl 实际下载安装包，MD5 与清单一致，SHA-256 与已验证包一致。清单发布提交 f2a74a52c190aa7e78ccfb4468ca14879b37240a，git ls-remote 核对 main 一致；测试标签仍指向 e288d8c7d769b654fd4ea32c4eae607ba3437832。
 - 检查范围：源码与构建产物较前次检查没有改变，沿用 46 项 Python 测试、146 项协议断言和编译通过证据；本批执行发布文件校验。Windows python 别名当前不可执行，文件读取改用 PowerShell，不影响既有构建成果。独立评审未启用，用户安装验收待进行。
 - 限制：目标 ABI 12.1.0.0；真实 Jellyfin/fnOS 加载、Linux FUSE、Docker 和真实播放未验证。插件默认禁用，Worker、稳定入口与网络命名空间前提保留；NAS 和生产 /video 映射均未修改。
+- 交付状态：源码托管、测试预发布包和固定 Jellyfin 清单链路已完成并核验；未配置 CI，未把前期本机检查记为远程 CI 或独立评审。为保留原本地历史，初始本地分支将保存为 codex/local-before-github-upload；main 跟踪已核验的 origin/main，所有本地变更先提交保存，不使用强制推送或 reset --hard。
