@@ -1,0 +1,2 @@
+# Optional Linux test mount dependency; cache core uses the standard library.
+mfusepy==3.1.1
