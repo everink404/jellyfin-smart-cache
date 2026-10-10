@@ -4,6 +4,18 @@
 
 2026-10-06 已取得目标文档 v0.1 草案。已实现缓存核心、只读文件入口、后台预取队列、受限控制服务与 Jellyfin 12.1 事件桥接原型。本机 46 项 Python 测试通过，插件编译与 146 项协议断言通过；NAS 挂载、真实插件加载、播放与部署尚未验证。
 
+## 测试插件安装
+
+公开仓库：[everink404/jellyfin-smart-cache](https://github.com/everink404/jellyfin-smart-cache)。[v0.1.0-test.1 测试安装包](https://github.com/everink404/jellyfin-smart-cache/releases/tag/v0.1.0-test.1) 已发布。
+
+在独立 Jellyfin 测试实例的插件仓库中添加以下地址，查找 `JellyCache experimental bridge`，安装后重启：
+
+```text
+https://raw.githubusercontent.com/everink404/jellyfin-smart-cache/main/manifest.json
+```
+
+此仓库清单专供实验测试。目标 Jellyfin 12.1.0 / .NET 10，插件默认禁用，真实服务器加载与 NAS 播放未验证；单独安装不会部署 Worker 或切换媒体来源。启用前阅读 [插件配置与限制](docs/JELLYFIN_PLUGIN.md)。暂不添加许可证。
+
 ## 资料导航
 
 - [项目目标](docs/Jellyfin剧集智能预取缓存系统-项目目标文档.md)：产品范围、设计基线和 v0.1 验收要求。

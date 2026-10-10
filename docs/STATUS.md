@@ -1,6 +1,6 @@
 # 当前状态与批次记录
 
-更新时间：2026-10-06（Asia/Shanghai）。项目名暂沿用 `jelly cache`。
+更新时间：2026-10-11（Asia/Shanghai）。项目名暂沿用 `jelly cache`。
 
 ## 当前项目基线
 
@@ -141,3 +141,14 @@
 - 限制：真实 Jellyfin/fnOS 加载、Linux FUSE、Docker 可见性和播放均未验证。插件默认禁用；独立 Worker、稳定入口及共享网络命名空间前提保留。独立评审未启用、用户验收未进行。
 - 下一步：认证可用后确认目标仓库状态，上传并核验源码提交；创建预发布 Release，上传已检查安装包及摘要，匿名下载复核；最后提交根清单并验证固定 URL 可读取。没有把本地准备完成记为上传成功。
 - 本地保存补充：首次源码提交 5c80d492eac7dd5eaf253d65df0cc96e1257ef8a（main）；提交前检查未纳入生成目录，ZIP CRC、打包 DLL 与构建 DLL 逐字节一致及新增文档链接通过。git diff --check 报告两处已有空白：原目标文档的 Markdown 换行和既有诊断脚本行尾空格；未修改原目标文档。沙箱阻止写入 Git 索引后，git add／commit 经自动审批成功，没有审批拒绝。GitHub 登录尚待用户完成，远程状态仍未上传。
+
+## 批次 B-20261011-01：测试插件公开上传
+
+- 授权：沿用 D-003；本上传对话用户告知“已经登陆”，继续此前测试上传。公开账号 everink404，仓库名 jellyfin-smart-cache，暂不添加许可证。不包括生产部署或生产稳定发布。
+- 远程仓库：https://github.com/everink404/jellyfin-smart-cache 。通过用户已登录浏览器创建公开空仓库；GitHub 接口上传 39 个已检查源码与文档。未上传 .tools、bin/obj、运行数据或凭据；未创建自动发布工作流。
+- 源码核验：git ls-remote 读取 main 为 e288d8c7d769b654fd4ea32c4eae607ba3437832，与接口创建的提交一致。浏览器确认目录与 README。本机无可用 Git 推送凭据，使用已有连接器写入，远程提交历史由接口建立；原本地提交历史保留。
+- 测试分发：https://github.com/everink404/jellyfin-smart-cache/releases/tag/v0.1.0-test.1 ，标签指向 e288d8c；公开 Release 标记 Pre-release，附件为 JellyCache.Plugin_0.1.0.0.zip 与 SHA256SUMS.txt。发布复用 B-20261006-06 已验证包，SHA-256 未变。
+- 匿名复核：无认证下载安装包成功，MD5 fb4fee97ab6cf538f3689b83ffae7d91、SHA-256 bf9fbd5e3fe995b93187245295335d8d8b112d76b80a716502004f9393811707 与本地一致；公开 API 确认 prerelease=true、draft=false。根 manifest.json 由该包对应清单产生；README 与分发文档加入实际入口。
+- 清单入口：https://raw.githubusercontent.com/everink404/jellyfin-smart-cache/main/manifest.json 。清单上传及远程匿名读取检查完成后另附结果；不将本地生成当作已生效。
+- 检查范围：源码与构建产物较前次检查没有改变，沿用 46 项 Python 测试、146 项协议断言和编译通过证据；本批执行发布文件校验。Windows python 别名当前不可执行，文件读取改用 PowerShell，不影响既有构建成果。独立评审未启用，用户安装验收待进行。
+- 限制：目标 ABI 12.1.0.0；真实 Jellyfin/fnOS 加载、Linux FUSE、Docker 和真实播放未验证。插件默认禁用，Worker、稳定入口与网络命名空间前提保留；NAS 和生产 /video 映射均未修改。

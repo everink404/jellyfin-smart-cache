@@ -1,8 +1,8 @@
 # GitHub 与 Jellyfin 测试分发
 
-目标公开仓库：`everink404/jellyfin-smart-cache`。暂不添加许可证。公开可见不代表已授予开源使用许可。
+公开仓库：[everink404/jellyfin-smart-cache](https://github.com/everink404/jellyfin-smart-cache)。暂不添加许可证。公开可见不代表已授予开源使用许可。
 
-源码保存在 GitHub；测试插件 ZIP 与 SHA-256 摘要放在 GitHub Releases；根目录 `manifest.json` 供 Jellyfin 读取。源码版本、Release 和清单应指向同一批构建产物。首次测试标签计划为 `v0.1.0-test.1`，GitHub Release 必须标记为 prerelease。
+源码保存在 GitHub；测试插件 ZIP 与 SHA-256 摘要放在 GitHub Releases；根目录 `manifest.json` 供 Jellyfin 读取。源码版本、Release 和清单应指向同一批构建产物。[首次测试版 v0.1.0-test.1](https://github.com/everink404/jellyfin-smart-cache/releases/tag/v0.1.0-test.1) 于 2026-10-11 发布并标记为 prerelease。
 
 ## 打包与发布顺序
 
@@ -13,13 +13,13 @@
 5. 匿名下载安装包，核对 MD5、SHA-256 和 ZIP 内容。Jellyfin 清单 checksum 按其安装器要求使用 ZIP 的 MD5，另提供 SHA-256 摘要。
 6. 安装包核验通过后，将本批生成的清单保存到根目录 `manifest.json` 并上传。匿名读取清单，核对 sourceUrl 可下载及 checksum 一致。
 
-计划的 Jellyfin 仓库 URL：
+Jellyfin 测试仓库 URL：
 
 ```text
 https://raw.githubusercontent.com/everink404/jellyfin-smart-cache/main/manifest.json
 ```
 
-该 URL 在远程创建及清单上传核验前属于计划地址。根清单目前专用于测试分发；不要把它作为生产更新源。以后稳定版与测试版并存时，分别维护分发清单，避免生产实例收到测试更新。
+根清单专用于测试分发；不要把它作为生产更新源。以后稳定版与测试版并存时，分别维护分发清单，避免生产实例收到测试更新。测试安装包已完成匿名下载与 MD5、SHA-256 复核；清单远程检查结果见 [状态记录](STATUS.md)。
 
 ## 安装测试
 
