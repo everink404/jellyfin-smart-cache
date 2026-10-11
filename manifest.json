@@ -1,5 +1,23 @@
 [
   {
+    "guid": "d9ed3154-82f7-4e4b-9b74-24831fc59d65",
+    "name": "JellyCache single-plugin read test",
+    "overview": "Single-episode local cache routing test; no Worker or FUSE.",
+    "description": "TEST ONLY. Jellyfin 12.1.0. Disabled by default. Configure one original episode and an identical local copy in the plugin dashboard. No automatic prefetch or eviction. Real NAS playback remains unverified.",
+    "owner": "everink404",
+    "category": "General",
+    "versions": [
+      {
+        "version": "0.2.0.0",
+        "targetAbi": "12.1.0.0",
+        "checksum": "9a352379994eec91b85b661cf33c00ea",
+        "changelog": "v0.2.0-read-test.2. Single-plugin read routing experiment. See docs/READ_PROBE_TEST.md.",
+        "sourceUrl": "https://everink404.github.io/jellyfin-smart-cache/packages/v0.2.0-read-test.2/JellyCache.ReadProbe_0.2.0.0.zip",
+        "timestamp": "2026-10-11T12:31:51Z"
+      }
+    ]
+  },
+  {
     "guid": "7dbbb7e6-2274-498c-af54-203587f64f52",
     "name": "JellyCache experimental bridge",
     "overview": "Experimental episode prefetch event bridge; separate Worker required.",
