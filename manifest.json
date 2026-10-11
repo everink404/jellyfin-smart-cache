@@ -1,20 +1,20 @@
 [
-    {
-        "guid":  "7dbbb7e6-2274-498c-af54-203587f64f52",
-        "name":  "JellyCache experimental bridge",
-        "overview":  "Experimental episode prefetch event bridge; separate Worker required.",
-        "description":  "TEST ONLY. Built against Jellyfin 12.1.0 / .NET 10. Disabled by default. Requires a separately configured JellyCache Worker and stable media entry. Real Jellyfin/fnOS loading, FUSE, Docker visibility and playback are not verified. Do not change production /video mounts.",
-        "owner":  "everink404",
-        "category":  "General",
-        "versions":  [
-                         {
-                             "version":  "0.1.0.0",
-                             "changelog":  "v0.1.0-test.1 experimental prerelease. No production compatibility claim. See docs/JELLYFIN_PLUGIN.md for enablement and limitations.",
-                             "targetAbi":  "12.1.0.0",
-                             "sourceUrl":  "https://github.com/everink404/jellyfin-smart-cache/releases/download/v0.1.0-test.1/JellyCache.Plugin_0.1.0.0.zip",
-                             "checksum":  "fb4fee97ab6cf538f3689b83ffae7d91",
-                             "timestamp":  "2026-10-06T15:30:42Z"
-                         }
-                     ]
-    }
+  {
+    "guid": "7dbbb7e6-2274-498c-af54-203587f64f52",
+    "name": "JellyCache experimental bridge",
+    "overview": "Experimental episode prefetch event bridge; separate Worker required.",
+    "description": "TEST ONLY. Built against Jellyfin 12.1.0 / .NET 10. Disabled by default. Requires a separately configured JellyCache Worker and stable media entry. Real Jellyfin/fnOS loading, FUSE, Docker visibility and playback are not verified. Do not change production /video mounts.",
+    "owner": "everink404",
+    "category": "General",
+    "versions": [
+      {
+        "version": "0.1.0.0",
+        "changelog": "v0.1.0-test.1 experimental prerelease. No production compatibility claim. See docs/JELLYFIN_PLUGIN.md for enablement and limitations.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://everink404.github.io/jellyfin-smart-cache/packages/v0.1.0-test.1/JellyCache.Plugin_0.1.0.0.zip",
+        "checksum": "fb4fee97ab6cf538f3689b83ffae7d91",
+        "timestamp": "2026-10-06T15:30:42Z"
+      }
+    ]
+  }
 ]
