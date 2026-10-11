@@ -8,7 +8,7 @@
 
 公开仓库：[everink404/jellyfin-smart-cache](https://github.com/everink404/jellyfin-smart-cache)。[v0.1.0-test.1 测试安装包](https://github.com/everink404/jellyfin-smart-cache/releases/tag/v0.1.0-test.1) 已发布。
 
-在独立 Jellyfin 测试实例的插件仓库中添加以下地址，查找 `JellyCache experimental bridge`，安装后重启：
+在独立 Jellyfin 测试实例的插件仓库中添加以下地址。单插件读取实验请选择 **`JellyCache single-plugin read test` 0.2.0.0**，安装后重启；旧的 `JellyCache experimental bridge` 是独立的事件桥接版。
 
 ```text
 https://everink404.github.io/jellyfin-smart-cache/manifest.json
@@ -16,7 +16,7 @@ https://everink404.github.io/jellyfin-smart-cache/manifest.json
 
 清单与 ZIP 均通过同一 GitHub Pages 站点提供。若之前添加过 Raw 地址，请停用旧条目后使用新地址；否则 Jellyfin 仍会请求旧站点。NAS 是否可访问新站点需实际安装验证。
 
-此仓库清单专供实验测试。目标 Jellyfin 12.1.0 / .NET 10，插件默认禁用，真实服务器加载与 NAS 播放未验证；单独安装不会部署 Worker 或切换媒体来源。启用前阅读 [插件配置与限制](docs/JELLYFIN_PLUGIN.md)。暂不添加许可证。
+此仓库清单专供实验测试，目标 Jellyfin 12.1.0 / .NET 10，默认禁用，真实服务器加载与 NAS 播放未验证。读取测试版无需 Worker/FUSE，通过网页配置指定一集与完整本地副本，没有自动预取；见 [读取测试步骤](docs/READ_PROBE_TEST.md)。旧桥接版的依赖见 [桥接说明](docs/JELLYFIN_PLUGIN.md)。暂不添加许可证。
 
 ## 资料导航
 
@@ -27,6 +27,8 @@ https://everink404.github.io/jellyfin-smart-cache/manifest.json
 - [稳定文件入口测试](docs/FILESYSTEM_TEST.md)：Linux 可选 FUSE 入口、独立测试步骤与证据限制。
 - [后台队列与控制服务](docs/WORKER_SERVICE.md)：窗口、限速、暂停、重试及事件契约。
 - [Jellyfin 事件桥接插件](docs/JELLYFIN_PLUGIN.md)：12.1 插件、构建、测试配置与连接前提。
+- [单插件接入验证](docs/SINGLE_PLUGIN_VALIDATION.md)：优先调查插件内部缓存切换，记录源码／接口证据及真实播放缺口。
+- [单插件读取测试版](docs/READ_PROBE_TEST.md)：独立测试插件的配置、同条目读取与回源验证。
 - [GitHub 测试分发](docs/GITHUB_DISTRIBUTION.md)：源码上传、插件打包、测试 Release 与 Jellyfin 清单。
 - [项目协作约定](docs/REVIEW_WORKFLOW.md)：本项目采用的最小流程、授权边界与整理规则。
 - [当前状态与批次记录](docs/STATUS.md)：当前任务、检查证据、授权、暂停、验收及剩余事项。

@@ -1,5 +1,7 @@
 # Jellyfin 12.1 事件桥接原型
 
+2026-10-11：用户要求优先验证单插件接入。当前测试包仍为本文的事件桥接版；新的源码／接口实验与剩余缺口见 [单插件接入验证](SINGLE_PLUGIN_VALIDATION.md)。没有把旧测试包升级为完整缓存插件。
+
 2026-10-06，批次 B-20261006-05。插件源文件位于 `plugin/JellyCache.Plugin/`，构建产物为 `plugin/JellyCache.Plugin/bin/Release/net10.0/JellyCache.Plugin.dll`。默认禁用，通过环境变量在独立测试实例中启用；没有写入现有 NAS 或 Jellyfin。
 
 ## 行为和兼容性

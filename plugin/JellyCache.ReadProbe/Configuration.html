@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>JellyCache 读取测试</title></head><body>
+<div id="JellyCacheReadPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+<div data-role="content"><div class="content-primary">
+<h2>JellyCache 单插件读取测试</h2>
+<p>只测试一集的完整本地副本。不自动下载、不删除文件，也不需要 Worker 或 FUSE。</p>
+<p>先准备与原视频完全相同的本地文件，两个路径都必须在 Jellyfin 容器内可读。验证会完整读取两份文件，建议先用较小的测试剧集。</p>
+<form id="JellyCacheReadForm">
+<div class="checkboxContainer"><label class="emby-checkbox-label"><input id="ReadEnabled" type="checkbox" is="emby-checkbox"><span>启用这一集的缓存读取测试</span></label></div>
+<div class="inputContainer"><label class="inputLabel" for="ReadSource">原剧集在容器内的完整路径</label><input id="ReadSource" is="emby-input" type="text" placeholder="/video/测试剧/Season 01/E01.mkv"></div>
+<div class="inputContainer"><label class="inputLabel" for="ReadCache">本地副本在容器内的完整路径</label><input id="ReadCache" is="emby-input" type="text" placeholder="/config/jellycache-test/E01.mkv"></div>
+<button is="emby-button" type="submit" class="raised button-submit block"><span>保存并重新验证</span></button>
+</form>
+<p>验证成功后再开始新的播放。测试过程中不要移动或修改这两个文件；停用后停止旧播放，再重新播放以验证回源。</p>
+<button id="ReadRefresh" is="emby-button" type="button" class="raised"><span>刷新状态</span></button>
+<pre id="ReadStatus" style="white-space:pre-wrap"></pre>
+</div></div>
+<script>
+(function () {
+    var page = document.querySelector('#JellyCacheReadPage');
+    var id = 'd9ed3154-82f7-4e4b-9b74-24831fc59d65';
+    function el(selector) { return page.querySelector(selector); }
+    function error(e) { Dashboard.hideLoadingMsg(); el('#ReadStatus').textContent = '请求失败，请检查 Jellyfin 日志。'; }
+    function refresh() {
+        return ApiClient.ajax({type:'GET', url:ApiClient.getUrl('JellyCacheReadProbe/Status'), dataType:'json'}).then(function(s) {
+            var states = {'disabled':'未启用','verifying':'正在校验两份文件，请稍后刷新','ready':'校验通过，可以开始新的播放',
+                'unsupported-registration':'当前服务注册不支持，保持原来源','invalid-paths':'请填写两个不同的容器内绝对路径',
+                'size-mismatch':'两份文件大小不同，保持原来源','hash-mismatch':'两份文件内容不同，保持原来源',
+                'file-unavailable':'文件缺失或不可读，保持原来源','changed-during-verification':'校验期间文件或设置改变，请重新保存',
+                'file-changed-save-to-reverify':'文件已改变，请重新保存验证'};
+            el('#ReadStatus').textContent = (states[s.State] || s.State) + '\n缓存选择次数：' + s.CacheSelections + '\n回源选择次数：' + s.FallbackSelections + '\n选择次数不是实际播放命中次数；请结合播放与取流日志确认。';
+        }).catch(error);
+    }
+    page.addEventListener('pageshow', function() {
+        ApiClient.getPluginConfiguration(id).then(function(c) {
+            el('#ReadEnabled').checked = c.Enabled; el('#ReadSource').value = c.SourcePath || ''; el('#ReadCache').value = c.CachePath || ''; return refresh();
+        }).catch(error);
+    });
+    el('#ReadRefresh').addEventListener('click', refresh);
+    el('#JellyCacheReadForm').addEventListener('submit', function(e) {
+        e.preventDefault(); Dashboard.showLoadingMsg();
+        ApiClient.getPluginConfiguration(id).then(function(c) {
+            c.Enabled = el('#ReadEnabled').checked; c.SourcePath = el('#ReadSource').value; c.CachePath = el('#ReadCache').value;
+            c.ValidationRevision = ((c.ValidationRevision || 0) + 1) % 2147483647;
+            return ApiClient.updatePluginConfiguration(id, c);
+        }).then(function(result) { Dashboard.processPluginConfigurationUpdateResult(result); el('#ReadStatus').textContent = '设置已保存，请稍后刷新验证状态。'; }).catch(error);
+    });
+})();
+</script></div></body></html>
