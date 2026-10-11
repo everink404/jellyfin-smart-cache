@@ -153,3 +153,13 @@
 - 检查范围：源码与构建产物较前次检查没有改变，沿用 46 项 Python 测试、146 项协议断言和编译通过证据；本批执行发布文件校验。Windows python 别名当前不可执行，文件读取改用 PowerShell，不影响既有构建成果。独立评审未启用，用户安装验收待进行。
 - 限制：目标 ABI 12.1.0.0；真实 Jellyfin/fnOS 加载、Linux FUSE、Docker 和真实播放未验证。插件默认禁用，Worker、稳定入口与网络命名空间前提保留；NAS 和生产 /video 映射均未修改。
 - 交付状态：源码托管、测试预发布包和固定 Jellyfin 清单链路已完成并核验；未配置 CI，未把前期本机检查记为远程 CI 或独立评审。为保留原本地历史，初始本地分支将保存为 codex/local-before-github-upload；main 跟踪已核验的 origin/main，所有本地变更先提交保存，不使用强制推送或 reset --hard。
+
+## 批次 B-20261011-02：仓库访问失败与 Pages 备用入口
+
+- 用户反馈：仓库目录可以显示插件，但安装失败。截图显示服务端、网页与构建版本为 12.1；提供日志中官方内置插件版本为 12.1.0.0。已记录界面与日志证据，不推定插件实际加载成功。
+- 诊断：用户粘贴日志 06:24:36 在 InstallationManager.GetPackages 读取原 Raw 清单时发生 TLS 连接重置，SocketException 104。证实该次清单访问失败；未取得 ZIP 解压、校验或加载失败证据，不能把这段错误解释为插件代码失败。
+- 处理：增加同仓库 GitHub Pages 分发；清单和相同测试 ZIP 由同一站点提供。自动审批首次拒绝创建新分发 blob，理由是新增 Pages endpoint 没有明确授权；未绕过，已向用户解释。用户随后直接批准“允许增加 GitHub Pages 入口”，据此重试成功。
+- 远程静态分支：codex/plugin-distribution，提交 65174366f12becd6579675d5af6284f7595ad2a8。仅含静态分发文件，Pages 来源设为该分支 / (root)，保持 HTTPS。启用 GitHub 内置 Pages 部署，不添加定时任务或源码发布工作流。
+- 新入口：https://everink404.github.io/jellyfin-smart-cache/manifest.json 。sourceUrl 为同站点 packages/v0.1.0-test.1/JellyCache.Plugin_0.1.0.0.zip。插件身份、版本、ABI、ZIP 和摘要不变；原 Release 保留。
+- 状态：Pages 配置已保存；首次部署运行 38118175640 的 build、report-build-status、deploy 均 completed/success。匿名读取新清单 HTTP 200，按 sourceUrl 下载 ZIP HTTP 200，最终下载 URL 仍在 everink404.github.io，无 Releases 跳转；MD5 fb4fee97ab6cf538f3689b83ffae7d91、SHA-256 bf9fbd5e3fe995b93187245295335d8d8b112d76b80a716502004f9393811707 均与原包一致。GUID、版本及 ABI 检查通过，远程静态分支 SHA 核对通过。README 与分发说明加入新入口及停用旧 Raw 条目的要求。
+- 范围：仅修复分发访问路径；没有连接 NAS、修改生产挂载、代理、TLS 或插件源码。NAS 对新站点的连通性及实际安装仍待用户验证，未把备用入口建立记为用户验收。

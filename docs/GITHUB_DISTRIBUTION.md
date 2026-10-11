@@ -16,10 +16,20 @@
 Jellyfin 测试仓库 URL：
 
 ```text
-https://raw.githubusercontent.com/everink404/jellyfin-smart-cache/main/manifest.json
+https://everink404.github.io/jellyfin-smart-cache/manifest.json
 ```
 
 根清单专用于测试分发；不要把它作为生产更新源。以后稳定版与测试版并存时，分别维护分发清单，避免生产实例收到测试更新。测试安装包已完成匿名下载与 MD5、SHA-256 复核；清单远程检查结果见 [状态记录](STATUS.md)。
+
+## GitHub Pages 备用分发
+
+2026-10-11，用户报告安装失败；提供的日志确认 Jellyfin 在访问 raw.githubusercontent.com 清单时发生 TLS 连接重置。用户随后明确批准“允许增加 GitHub Pages 入口”。
+
+Pages 从 `codex/plugin-distribution` 分支根目录发布，仅包含 `.nojekyll`、说明首页、manifest.json、版本化 ZIP 与摘要。清单 sourceUrl 使用同一 everink404.github.io 站点，避免安装时跳到 Releases 下载域名。原 Release 和原始包保留，插件版本、GUID、目标 ABI 和校验值不变。
+
+使用新地址时停用旧的 Raw 仓库条目，否则 Jellyfin 仍可能请求旧站点。Pages 网络与原 Raw 网络不同，但不能据此保证 NAS 可访问；需要实际目录读取与安装确认。无需降低 TLS 校验或更改生产媒体映射。
+
+后续新版本先完成原包检查，再把相同 ZIP、摘要和更新后的 Pages 清单提交到该分支；保留旧版本包路径。GitHub 使用内置 Pages 构建部署流程，不新增源码构建、定时发布或自动更新插件工作流。
 
 ## 安装测试
 

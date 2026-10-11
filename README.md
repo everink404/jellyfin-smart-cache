@@ -11,8 +11,10 @@
 在独立 Jellyfin 测试实例的插件仓库中添加以下地址，查找 `JellyCache experimental bridge`，安装后重启：
 
 ```text
-https://raw.githubusercontent.com/everink404/jellyfin-smart-cache/main/manifest.json
+https://everink404.github.io/jellyfin-smart-cache/manifest.json
 ```
+
+清单与 ZIP 均通过同一 GitHub Pages 站点提供。若之前添加过 Raw 地址，请停用旧条目后使用新地址；否则 Jellyfin 仍会请求旧站点。NAS 是否可访问新站点需实际安装验证。
 
 此仓库清单专供实验测试。目标 Jellyfin 12.1.0 / .NET 10，插件默认禁用，真实服务器加载与 NAS 播放未验证；单独安装不会部署 Worker 或切换媒体来源。启用前阅读 [插件配置与限制](docs/JELLYFIN_PLUGIN.md)。暂不添加许可证。
 
