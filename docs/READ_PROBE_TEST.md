@@ -8,6 +8,8 @@
 
 在线安装使用原仓库地址 `https://everink404.github.io/jellyfin-smart-cache/manifest.json`，刷新插件目录后查找 **JellyCache single-plugin read test** 0.2.0.0。它是新插件条目，不是旧桥接版的更新。发布状态与在线校验证据见 STATUS B-20261011-05。
 
+该版已通过原 Pages 入口发布；[直接下载 ZIP](https://everink404.github.io/jellyfin-smart-cache/packages/v0.2.0-read-test.2/JellyCache.ReadProbe_0.2.0.0.zip)。在线包 SHA-256：`d62a1c0be893b714cf6f636cee80af2081a58efb6f6cd90746d4fab3b44809e3`。
+
 执行 `powershell -File scripts/build-read-probe.ps1` 编译并运行源代码／接口回归检查；首次取得固定上游源码见 `scripts/check-single-plugin.ps1 -FetchSource`。随后执行 `powershell -File scripts/package-read-probe.ps1` 产生本地 ZIP、MD5 清单和 SHA-256 文件。脚本不上传；清单中的 URL 为拟发布位置，只有实际上传并核验后才可使用。
 
 本地测试包：`.tools/distribution/v0.2.0-read-test.2/JellyCache.ReadProbe_0.2.0.0.zip`。ZIP 根目录仅 DLL 和 deps.json，网页资源已嵌入 DLL；不包含框架、源码、用户配置或媒体。适用于 Linux 容器，程序集没有 Windows 专属读文件实现；真实 Linux 加载仍须验证。

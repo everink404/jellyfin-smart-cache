@@ -33,6 +33,8 @@ Pages 从 `codex/plugin-distribution` 分支根目录发布，仅包含 `.nojeky
 
 ## 安装测试
 
+2026-10-11 已加入 **JellyCache single-plugin read test 0.2.0.0**：原 Pages 仓库地址不变，刷新插件目录后选择该新条目，安装后重启并在插件网页配置测试文件。它无需 Worker/FUSE，仅测试一集的完整缓存读取，不自动预取；步骤见 [读取测试版](READ_PROBE_TEST.md)。新 ZIP 匿名下载与清单校验已通过，详见 STATUS B-20261011-05。旧桥接条目与包保留，以下为旧版说明。
+
 在独立 Jellyfin 测试实例的管理后台插件仓库中添加上述清单地址，在目录找到 `JellyCache experimental bridge`，安装后重启实例。目标为 Jellyfin 12.1.0 / .NET 10；较低版本可能被 ABI 过滤，较高版本显示也不代表已验证兼容。实际服务端完整版本仍需核实。
 
 插件默认禁用，启用变量及连接要求见 [插件说明](JELLYFIN_PLUGIN.md)。单独安装插件不会自动部署 Worker 或切换媒体读取来源。未验证真实 Jellyfin/fnOS 加载、Linux FUSE、Docker 可见性、播放、续播或拖动；不能擅自修改生产 `/video` 映射。

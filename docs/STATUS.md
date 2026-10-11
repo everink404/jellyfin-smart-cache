@@ -200,4 +200,6 @@
 
 - 授权：用户直接请求“那上传吧，我好开始测试”。将已验证的读取测试包及对应源码上传既有公开仓库与 Pages 分发入口；原仓库地址不变，不修改 NAS 或扩大功能。
 - 发布内容：新增 JellyCache single-plugin read test 0.2.0.0，保留旧桥接版条目；ZIP 为 B-04 最终 test.2 成品，MD5 9a352379994eec91b85b661cf33c00ea、SHA-256 d62a1c0be893b714cf6f636cee80af2081a58efb6f6cd90746d4fab3b44809e3。源码及使用说明同步 main；仅沿用既有 Pages 内置部署，没有新增工作流或更改仓库权限。
-- 检查：本次代码／包未变，沿用最终编译零警告零错误及 37 项接口夹具检查；执行上传文件盘点与哈希核对。源码 main 和 Pages 分支上传、部署及匿名下载验证正在进行，完成证据随后补充；不把发布当作真实加载／播放通过。
+- 检查：本次代码／包未变，沿用最终编译零警告零错误及 37 项接口夹具检查；执行上传文件盘点与哈希核对。源码上传提交 e1a4ec59efa530946c6ced72e1a9d0794d15db83；Pages 分发提交 cccd7820c7b0ba05cb1c334575a401e88dee4676；git ls-remote 均核对一致。
+- 上线证据：Pages 运行 38141329316 completed/success。匿名读取原 manifest.json 地址 HTTP 200，包含新读取版和旧桥接版；按新 sourceUrl 下载 ZIP HTTP 200，MD5 和 SHA-256 与本地成品一致。固定 Jellyfin.Model 12.1.0 成功解析在线双插件清单，检查新 GUID、版本、目标 ABI、MD5 和 ZIP 根目录通过；浏览器已确认新首页并保存截图。
+- 交付：原仓库地址保持 https://everink404.github.io/jellyfin-smart-cache/manifest.json ，刷新目录安装 JellyCache single-plugin read test 0.2.0.0，重启后打开配置页；使用说明已同步仓库。新包通过既有 Pages 发布，本批未新建 GitHub Release。NAS 实际安装、加载与播放仍待用户测试，不把分发成功记为功能验收通过。
