@@ -2,13 +2,15 @@
 
 本项目从零开发 Jellyfin 剧集智能预取缓存系统：用户观看当前集时预取同季后续集，在 NAS 有限空间内改善连续观看体验。后续播放通过稳定媒体入口优先读取完整有效的本地缓存，未命中时尝试原远端来源；保留原媒体条目、续播和播放历史。
 
-2026-10-06 已取得目标文档 v0.1 草案。已实现缓存核心、只读文件入口、后台预取队列、受限控制服务与 Jellyfin 12.1 事件桥接原型。本机 46 项 Python 测试通过，插件编译与 146 项协议断言通过；NAS 挂载、真实插件加载、播放与部署尚未验证。
+2026-10-06 已取得目标文档 v0.1 草案。已有缓存核心、只读文件入口、后台预取队列、控制服务与 Jellyfin 12.1 桥接原型；随后优先推进单插件路线。2026-10-12 用户容器已验证单插件缓存转码播放、拖动与回源；当前本地开发进程内预取和存储核心，尚未完成自动预取宿主闭环。各批检查与验收分别见 STATUS。
 
 ## 测试插件安装
 
 公开仓库：[everink404/jellyfin-smart-cache](https://github.com/everink404/jellyfin-smart-cache)。[v0.1.0-test.1 测试安装包](https://github.com/everink404/jellyfin-smart-cache/releases/tag/v0.1.0-test.1) 已发布。
 
-在独立 Jellyfin 测试实例的插件仓库中添加以下地址。单插件读取实验请选择 **`JellyCache single-plugin read test` 0.2.0.0**，安装后重启；旧的 `JellyCache experimental bridge` 是独立的事件桥接版。
+在独立 Jellyfin 测试实例的插件仓库中添加以下地址。自动预取实验请选择 **`JellyCache single-plugin read test` 0.3.0.0**，升级后重启；保留原插件名与GUID以支持升级。旧的 `JellyCache experimental bridge` 是独立的事件桥接版。
+
+新增 **0.3.0.0 自动预取测试版**的本地构建及闭环夹具检查已完成，发布状态见 STATUS，测试步骤见 [自动预取验收](docs/PREFETCH_TEST.md)。它沿用原插件身份，新增自动模式；新安装默认关闭，升级保留手动模式。
 
 ```text
 https://everink404.github.io/jellyfin-smart-cache/manifest.json
@@ -16,7 +18,7 @@ https://everink404.github.io/jellyfin-smart-cache/manifest.json
 
 清单与 ZIP 均通过同一 GitHub Pages 站点提供。若之前添加过 Raw 地址，请停用旧条目后使用新地址；否则 Jellyfin 仍会请求旧站点。NAS 是否可访问新站点需实际安装验证。
 
-此仓库清单专供实验测试，目标 Jellyfin 12.1.0 / .NET 10，默认禁用，真实服务器加载与 NAS 播放未验证。读取测试版无需 Worker/FUSE，通过网页配置指定一集与完整本地副本，没有自动预取；见 [读取测试步骤](docs/READ_PROBE_TEST.md)。旧桥接版的依赖见 [桥接说明](docs/JELLYFIN_PLUGIN.md)。暂不添加许可证。
+此仓库清单专供实验测试，目标 Jellyfin 12.1.0 / .NET 10，默认禁用。读取测试版无需 Worker/FUSE，通过网页配置指定一集与完整本地副本，没有自动预取；当前用户容器已验证缓存转码和回源，直放未验证，见 [读取测试步骤](docs/READ_PROBE_TEST.md) 与 STATUS。旧桥接版的依赖见 [桥接说明](docs/JELLYFIN_PLUGIN.md)。暂不添加许可证。
 
 ## 资料导航
 
@@ -29,6 +31,9 @@ https://everink404.github.io/jellyfin-smart-cache/manifest.json
 - [Jellyfin 事件桥接插件](docs/JELLYFIN_PLUGIN.md)：12.1 插件、构建、测试配置与连接前提。
 - [单插件接入验证](docs/SINGLE_PLUGIN_VALIDATION.md)：优先调查插件内部缓存切换，记录源码／接口证据及真实播放缺口。
 - [单插件读取测试版](docs/READ_PROBE_TEST.md)：独立测试插件的配置、同条目读取与回源验证。
+- [自动预取测试版](docs/PREFETCH_TEST.md)：0.3.0.0 配置、E01→E02/E03 预取和实际命中验收。
+- [单插件预取演进](docs/SINGLE_PLUGIN_PREFETCH.md)：已验证版本的保留检查点、进程内预取实现顺序与当前代码边界。
+- [单插件存储核心](docs/SINGLE_PLUGIN_STORAGE.md)：受限复制、容量预留、完整校验、持久恢复与占用租约的实现和接入限制。
 - [GitHub 测试分发](docs/GITHUB_DISTRIBUTION.md)：源码上传、插件打包、测试 Release 与 Jellyfin 清单。
 - [项目协作约定](docs/REVIEW_WORKFLOW.md)：本项目采用的最小流程、授权边界与整理规则。
 - [当前状态与批次记录](docs/STATUS.md)：当前任务、检查证据、授权、暂停、验收及剩余事项。

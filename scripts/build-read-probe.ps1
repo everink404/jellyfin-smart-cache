@@ -8,6 +8,6 @@ $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $project = Join-Path $projectRoot 'plugin/JellyCache.ReadProbe/JellyCache.ReadProbe.csproj'
 & $dotnetExe restore $project --locked-mode --nologo -p:NuGetAudit=false
 if ($LASTEXITCODE -ne 0) { throw 'Read test restore failed' }
-& $dotnetExe build $project -c Release --no-restore --nologo
+& $dotnetExe build $project -c Release --no-restore --nologo -m:1 -p:UseSharedCompilation=false
 if ($LASTEXITCODE -ne 0) { throw 'Read test build failed' }
 & (Join-Path $PSScriptRoot 'check-single-plugin.ps1')

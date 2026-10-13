@@ -15,7 +15,7 @@ public sealed record ProbeSettings(bool Enabled, string Source, string Cache, in
     public static ProbeSettings Current()
     {
         var c = Plugin.Instance?.Configuration;
-        return c is null ? new(false, "", "", 0) : new(c.Enabled, c.SourcePath, c.CachePath, c.ValidationRevision);
+        return c is null ? new(false, "", "", 0) : new(c.Enabled && !c.AutomaticPrefetch, c.SourcePath, c.CachePath, c.ValidationRevision);
     }
 }
 

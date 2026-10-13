@@ -32,7 +32,9 @@ Push-Location $projectRoot
 try {
     & $dotnetExe restore $checks --locked-mode --nologo -p:NuGetAudit=false
     if ($LASTEXITCODE -ne 0) { throw 'Research dependency restore failed' }
-    & $dotnetExe run --project $checks -c Release --no-restore --nologo |
+    & $dotnetExe build $checks -c Release --no-restore --nologo -m:1 -p:UseSharedCompilation=false
+    if ($LASTEXITCODE -ne 0) { throw 'Single-plugin checks build failed' }
+    & $dotnetExe run --project $checks -c Release --no-restore --no-build --nologo |
         Tee-Object -FilePath (Join-Path $researchRoot 'checks.log')
     if ($LASTEXITCODE -ne 0) { throw 'Single-plugin source/interface experiment failed' }
 } finally { Pop-Location }

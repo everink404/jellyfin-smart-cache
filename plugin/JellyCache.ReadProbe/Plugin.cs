@@ -15,6 +15,15 @@ public sealed class ProbeConfiguration : BasePluginConfiguration
     public string SourcePath { get; set; } = "";
     public string CachePath { get; set; } = "";
     public int ValidationRevision { get; set; }
+    public bool AutomaticPrefetch { get; set; }
+    public bool PausePrefetch { get; set; }
+    public string MediaRoot { get; set; } = "/video";
+    public string CacheDirectory { get; set; } = "";
+    public long CapacityBytes { get; set; } = 10L * 1024 * 1024 * 1024;
+    public long MinimumFreeBytes { get; set; } = 2L * 1024 * 1024 * 1024;
+    public long BytesPerSecond { get; set; } = 8L * 1024 * 1024;
+    public string Strategy { get; set; } = "ahead";
+    public int Ahead { get; set; } = 2;
 }
 
 public sealed class Plugin : BasePlugin<ProbeConfiguration>, IHasWebPages
@@ -23,7 +32,7 @@ public sealed class Plugin : BasePlugin<ProbeConfiguration>, IHasWebPages
     public Plugin(IApplicationPaths paths, IXmlSerializer serializer) : base(paths, serializer) => Instance = this;
     public override string Name => "JellyCache single-plugin read test";
     public override Guid Id => new("d9ed3154-82f7-4e4b-9b74-24831fc59d65");
-    public override string Description => "Single-episode cache routing test. No Worker, FUSE or automatic prefetch.";
+    public override string Description => "Single-plugin cache routing and bounded same-season prefetch test.";
     public IEnumerable<PluginPageInfo> GetPages() => [new()
     {
         Name = "jellycache-read-test", EmbeddedResourcePath = "JellyCache.ReadProbe.Configuration.html"
@@ -48,13 +57,15 @@ public sealed class ServiceRegistrator : IPluginServiceRegistrator
         services.AddSingleton(new RegistrationResult(supported));
         services.AddSingleton<ProbeState>();
         services.AddHostedService(sp => sp.GetRequiredService<ProbeState>());
+        services.AddSingleton<PrefetchHost>();
+        services.AddHostedService(sp => sp.GetRequiredService<PrefetchHost>());
         if (!supported) return; // Preserve unknown registrations, rather than breaking server startup.
         var original = candidates[0];
         services.Remove(original);
         services.AddSingleton(sp => new ManagerOwner((IMediaSourceManager)
             ActivatorUtilities.CreateInstance(sp, original.ImplementationType!)));
         services.AddSingleton<IMediaSourceManager>(sp => new RoutingManager(
-            sp.GetRequiredService<ManagerOwner>().Manager, sp.GetRequiredService<ProbeState>()));
+            sp.GetRequiredService<ManagerOwner>().Manager, sp.GetRequiredService<ProbeState>(), sp.GetRequiredService<PrefetchHost>()));
     }
 }
 

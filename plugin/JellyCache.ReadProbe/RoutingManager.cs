@@ -11,12 +11,14 @@ using MediaBrowser.Model.MediaInfo;
 namespace JellyCache.ReadProbe;
 
 // Explicit forwarding: interface changes fail compilation instead of failing reflective invocation.
-public sealed class RoutingManager(IMediaSourceManager inner, ProbeState state) : IMediaSourceManager
+public sealed class RoutingManager(IMediaSourceManager inner, ProbeState state, PrefetchHost prefetch = null) : IMediaSourceManager
 {
+    private IReadOnlyList<MediaSourceInfo> Select(BaseItem item, IReadOnlyList<MediaSourceInfo> sources, string stage)
+        => prefetch?.AutomaticMode == true ? prefetch.Select(item, sources, stage) : state.Select(item, sources, stage);
     public async Task<IReadOnlyList<MediaSourceInfo>> GetPlaybackMediaSources(BaseItem item, User user, bool allowMediaProbe, bool enablePathSubstitution, CancellationToken token)
     {
         var sources = await inner.GetPlaybackMediaSources(item, user, allowMediaProbe, enablePathSubstitution, token).ConfigureAwait(false);
-        return state.Select(item, sources, enablePathSubstitution ? "negotiation" : "stream-resolution");
+        return Select(item, sources, enablePathSubstitution ? "negotiation" : "stream-resolution");
     }
     public async Task<MediaSourceInfo> GetMediaSource(BaseItem item, string sourceId, string liveId, bool substitution, CancellationToken token)
     {
@@ -25,7 +27,7 @@ public sealed class RoutingManager(IMediaSourceManager inner, ProbeState state) 
         // Match the pinned core implementation, retaining the full source list so
         // a lookup cannot accidentally bypass the single-source eligibility check.
         var sources = await inner.GetPlaybackMediaSources(item, null, false, substitution, token).ConfigureAwait(false);
-        return state.Select(item, sources, "source-lookup")
+        return Select(item, sources, "source-lookup")
             .FirstOrDefault(s => string.Equals(s.Id, sourceId, StringComparison.OrdinalIgnoreCase));
     }
     public void AddParts(IEnumerable<IMediaSourceProvider> providers) => inner.AddParts(providers);

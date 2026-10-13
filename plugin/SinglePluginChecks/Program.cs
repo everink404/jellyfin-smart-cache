@@ -145,6 +145,7 @@ foreach (var parameter in typeof(MediaSourceManager).GetConstructors().Single().
         System.Reflection.DispatchProxy.Create(parameter.ParameterType, typeof(UnusedDependency)));
 }
 typedServices.AddSingleton<IMediaSourceManager, MediaSourceManager>();
+typedServices.AddSingleton(System.Reflection.DispatchProxy.Create<MediaBrowser.Controller.Session.ISessionManager, UnusedDependency>());
 new JellyCache.ReadProbe.ServiceRegistrator().RegisterServices(typedServices, null!);
 using (var typedProvider = typedServices.BuildServiceProvider())
 {
@@ -163,6 +164,7 @@ var resource = typeof(JellyCache.ReadProbe.Plugin).Assembly.GetManifestResourceN
 Check(resource.Contains("JellyCache.ReadProbe.Configuration.html"), "dashboard configuration is embedded in packaged assembly");
 probeState.Dispose();
 Console.WriteLine($"{checks} checks passed. Source/interface fixture only; no actual Jellyfin playback or ffmpeg executed.");
+await PrefetchHostChecks.Run();
 
 sealed class FixtureEpisode : Episode, IHasMediaSources
 {

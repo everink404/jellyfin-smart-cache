@@ -152,9 +152,13 @@
         "resolved": "8.7.0",
         "contentHash": "BS2t+nsBer16PIebCEPNBK5fgMisADQyRCd7K+BgkMWpFmSaiYE+rVVNpFhGRqUkJmNSLmw0uCNzHHWfgml28Q=="
       },
+      "jellycache.core": {
+        "type": "Project"
+      },
       "jellycache.readprobe": {
         "type": "Project",
         "dependencies": {
+          "JellyCache.Core": "[1.0.0, )",
           "Jellyfin.Controller": "[12.1.0, )",
           "Jellyfin.Model": "[12.1.0, )"
         }

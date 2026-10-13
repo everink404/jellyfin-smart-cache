@@ -1,17 +1,32 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>JellyCache 读取测试</title></head><body>
+<html><head><meta charset="utf-8"><title>JellyCache 预取测试</title></head><body>
 <div id="JellyCacheReadPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
 <div data-role="content"><div class="content-primary">
-<h2>JellyCache 单插件读取测试</h2>
-<p>只测试一集的完整本地副本。不自动下载、不删除文件，也不需要 Worker 或 FUSE。</p>
-<p>先准备与原视频完全相同的本地文件，两个路径都必须在 Jellyfin 容器内可读。验证会完整读取两份文件，建议先用较小的测试剧集。</p>
+<h2>JellyCache 单插件预取测试 0.3</h2>
+<p>播放当前集时，后台缓存同季后续集；完整校验后，新播放优先读取缓存。默认后续两集。</p>
 <form id="JellyCacheReadForm">
-<div class="checkboxContainer"><label class="emby-checkbox-label"><input id="ReadEnabled" type="checkbox" is="emby-checkbox"><span>启用这一集的缓存读取测试</span></label></div>
+<div class="checkboxContainer"><label class="emby-checkbox-label"><input id="ReadEnabled" type="checkbox" is="emby-checkbox"><span>启用插件</span></label></div>
+<div class="checkboxContainer"><label class="emby-checkbox-label"><input id="AutoEnabled" type="checkbox" is="emby-checkbox"><span>自动预取模式（关闭则使用原手动读取测试）</span></label></div>
+<div id="AutoSettings" hidden>
+<p>缓存目录必须是容器内专用空目录，且与媒体根目录分开。插件只管理这个目录中的缓存；不要填写已有视频的目录。</p>
+<div class="inputContainer"><label class="inputLabel" for="MediaRoot">媒体根目录</label><input id="MediaRoot" is="emby-input" type="text" placeholder="/video"></div>
+<div class="inputContainer"><label class="inputLabel" for="CacheDirectory">专用缓存目录</label><input id="CacheDirectory" is="emby-input" type="text" placeholder="/excache/jellycache-managed"></div>
+<div class="inputContainer"><label class="inputLabel" for="CapacityGiB">缓存容量上限（GiB）</label><input id="CapacityGiB" is="emby-input" type="number" min="0.01" step="0.01"></div>
+<div class="inputContainer"><label class="inputLabel" for="FreeGiB">磁盘保留余量（GiB）</label><input id="FreeGiB" is="emby-input" type="number" min="0" step="0.01"></div>
+<div class="inputContainer"><label class="inputLabel" for="RateMiB">预取速度上限（MiB/s）</label><input id="RateMiB" is="emby-input" type="number" min="0.01" step="0.01"></div>
+<div class="inputContainer"><label for="Strategy">预取策略</label><select id="Strategy"><option value="next">下一集</option><option value="ahead">后续 N 集</option><option value="season">本季剩余集</option></select></div>
+<div class="inputContainer"><label class="inputLabel" for="Ahead">后续集数 N</label><input id="Ahead" is="emby-input" type="number" min="1" max="50" step="1"></div>
+<div class="checkboxContainer"><label class="emby-checkbox-label"><input id="PausePrefetch" type="checkbox" is="emby-checkbox"><span>暂停预取（已有缓存仍可播放）</span></label></div>
+<p>本测试版选中过的缓存保护至 Jellyfin 重启；空间不足时停止新增预取。调整目录、容量、余量或速率后须重启 Jellyfin。</p>
+</div>
+<div id="ManualSettings">
+<p>准备与原视频完全相同的本地文件；校验会完整读取两份文件。</p>
 <div class="inputContainer"><label class="inputLabel" for="ReadSource">原剧集在容器内的完整路径</label><input id="ReadSource" is="emby-input" type="text" placeholder="/video/测试剧/Season 01/E01.mkv"></div>
 <div class="inputContainer"><label class="inputLabel" for="ReadCache">本地副本在容器内的完整路径</label><input id="ReadCache" is="emby-input" type="text" placeholder="/config/jellycache-test/E01.mkv"></div>
+</div>
 <button is="emby-button" type="submit" class="raised button-submit block"><span>保存并重新验证</span></button>
 </form>
-<p>验证成功后再开始新的播放。测试过程中不要移动或修改这两个文件；停用后停止旧播放，再重新播放以验证回源。</p>
+<p>保存并确认状态后，再开始新的播放。关闭插件后，停止旧播放再重新播放以验证回源。</p>
 <button id="ReadRefresh" is="emby-button" type="button" class="raised"><span>刷新状态</span></button>
 <pre id="ReadStatus" style="white-space:pre-wrap"></pre>
 </div></div>
@@ -20,8 +35,24 @@
     var page = document.querySelector('#JellyCacheReadPage');
     var id = 'd9ed3154-82f7-4e4b-9b74-24831fc59d65';
     function el(selector) { return page.querySelector(selector); }
+    function mode() { el('#AutoSettings').hidden = !el('#AutoEnabled').checked; el('#ManualSettings').hidden = el('#AutoEnabled').checked; }
     function error(e) { Dashboard.hideLoadingMsg(); el('#ReadStatus').textContent = '请求失败，请检查 Jellyfin 日志。'; }
     function refresh() {
+        if (el('#AutoEnabled').checked) {
+            return ApiClient.ajax({type:'GET', url:ApiClient.getUrl('JellyCacheReadProbe/PrefetchStatus'), dataType:'json'}).then(function(s) {
+                var labels = {'disabled':'未启用自动预取','initializing':'正在恢复并校验缓存','ready':'已就绪，播放一集以触发预取','paused':'预取已暂停，已有缓存仍可使用',
+                    'restart-required':'目录或资源限制已改变，请停止播放后重启 Jellyfin','configuration-error':'配置或缓存目录不可用，请核对路径与权限后重新保存',
+                    'unsupported-registration':'当前服务注册不支持，请停用其他读取实验插件后重启','stopped':'已停止'};
+                var jobs = {'queued':'排队','copying':'复制中','ready':'缓存就绪','waiting':'等待空间或重试','paused':'已暂停','failed':'复制失败，已达重试上限'};
+                var lines = [labels[s.State] || s.State];
+                if (s.LastError === 'unsupported-episode') lines.push('有剧集的季集信息或媒体版本不受支持，已保持原来源。');
+                if (s.Usage) lines.push('缓存 ' + (s.Usage.CompleteBytes / 1073741824).toFixed(2) + ' GiB，预留 ' + (s.Usage.ReservedBytes / 1073741824).toFixed(2) + ' GiB');
+                lines.push('保护至重启的缓存项：' + s.RetainedSelections);
+                (s.Queue || []).forEach(function(q) { lines.push('第 ' + q.EpisodeNumber + ' 集：' + (jobs[q.State] || q.State)); });
+                lines.push('缓存选择：' + s.CacheSelections + '；回源选择：' + s.OriginSelections + '（选择次数不等于播放次数）');
+                el('#ReadStatus').textContent = lines.join('\n');
+            }).catch(error);
+        }
         return ApiClient.ajax({type:'GET', url:ApiClient.getUrl('JellyCacheReadProbe/Status'), dataType:'json'}).then(function(s) {
             var states = {'disabled':'未启用','verifying':'正在校验两份文件，请稍后刷新','ready':'校验通过，可以开始新的播放',
                 'unsupported-registration':'当前服务注册不支持，保持原来源','invalid-paths':'请填写两个不同的容器内绝对路径',
@@ -33,14 +64,28 @@
     }
     page.addEventListener('pageshow', function() {
         ApiClient.getPluginConfiguration(id).then(function(c) {
-            el('#ReadEnabled').checked = c.Enabled; el('#ReadSource').value = c.SourcePath || ''; el('#ReadCache').value = c.CachePath || ''; return refresh();
+            el('#ReadEnabled').checked = c.Enabled; el('#ReadSource').value = c.SourcePath || ''; el('#ReadCache').value = c.CachePath || '';
+            el('#AutoEnabled').checked = !!c.AutomaticPrefetch; el('#PausePrefetch').checked = !!c.PausePrefetch;
+            el('#MediaRoot').value = c.MediaRoot || '/video'; el('#CacheDirectory').value = c.CacheDirectory || '';
+            el('#CapacityGiB').value = (c.CapacityBytes || 10737418240) / 1073741824;
+            el('#FreeGiB').value = (c.MinimumFreeBytes == null ? 2147483648 : c.MinimumFreeBytes) / 1073741824;
+            el('#RateMiB').value = (c.BytesPerSecond || 8388608) / 1048576;
+            el('#Strategy').value = c.Strategy || 'ahead'; el('#Ahead').value = c.Ahead || 2;
+            mode(); return refresh();
         }).catch(error);
     });
     el('#ReadRefresh').addEventListener('click', refresh);
+    el('#AutoEnabled').addEventListener('change', mode);
     el('#JellyCacheReadForm').addEventListener('submit', function(e) {
         e.preventDefault(); Dashboard.showLoadingMsg();
         ApiClient.getPluginConfiguration(id).then(function(c) {
             c.Enabled = el('#ReadEnabled').checked; c.SourcePath = el('#ReadSource').value; c.CachePath = el('#ReadCache').value;
+            c.AutomaticPrefetch = el('#AutoEnabled').checked; c.PausePrefetch = el('#PausePrefetch').checked;
+            c.MediaRoot = el('#MediaRoot').value.trim(); c.CacheDirectory = el('#CacheDirectory').value.trim();
+            c.CapacityBytes = Math.round(Number(el('#CapacityGiB').value) * 1073741824);
+            c.MinimumFreeBytes = Math.round(Number(el('#FreeGiB').value) * 1073741824);
+            c.BytesPerSecond = Math.round(Number(el('#RateMiB').value) * 1048576);
+            c.Strategy = el('#Strategy').value; c.Ahead = Number(el('#Ahead').value);
             c.ValidationRevision = ((c.ValidationRevision || 0) + 1) % 2147483647;
             return ApiClient.updatePluginConfiguration(id, c);
         }).then(function(result) { Dashboard.processPluginConfigurationUpdateResult(result); el('#ReadStatus').textContent = '设置已保存，请稍后刷新验证状态。'; }).catch(error);

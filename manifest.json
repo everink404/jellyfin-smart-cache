@@ -1,20 +1,46 @@
 [
-    {
-        "guid":  "7dbbb7e6-2274-498c-af54-203587f64f52",
-        "name":  "JellyCache experimental bridge",
-        "overview":  "Experimental episode prefetch event bridge; separate Worker required.",
-        "description":  "TEST ONLY. Built against Jellyfin 12.1.0 / .NET 10. Disabled by default. Requires a separately configured JellyCache Worker and stable media entry. Real Jellyfin/fnOS loading, FUSE, Docker visibility and playback are not verified. Do not change production /video mounts.",
-        "owner":  "everink404",
-        "category":  "General",
-        "versions":  [
-                         {
-                             "version":  "0.1.0.0",
-                             "changelog":  "v0.1.0-test.1 experimental prerelease. No production compatibility claim. See docs/JELLYFIN_PLUGIN.md for enablement and limitations.",
-                             "targetAbi":  "12.1.0.0",
-                             "sourceUrl":  "https://github.com/everink404/jellyfin-smart-cache/releases/download/v0.1.0-test.1/JellyCache.Plugin_0.1.0.0.zip",
-                             "checksum":  "fb4fee97ab6cf538f3689b83ffae7d91",
-                             "timestamp":  "2026-10-06T15:30:42Z"
-                         }
-                     ]
-    }
+  {
+    "guid": "d9ed3154-82f7-4e4b-9b74-24831fc59d65",
+    "name": "JellyCache single-plugin read test",
+    "overview": "Single-plugin same-season prefetch and local cache routing test.",
+    "description": "TEST ONLY. Jellyfin 12.1.0. Disabled by default. Enable automatic mode and configure a dedicated empty cache directory. Default Ahead 2, bounded copying and capacity. Selected cache files stay protected until restart. Manual 0.2-style reading mode remains available. Automatic mode real NAS playback is unverified.",
+    "owner": "everink404",
+    "category": "General",
+    "versions": [
+      {
+        "version": "0.3.0.0",
+        "targetAbi": "12.1.0.0",
+        "checksum": "0fda262371e9045314d5741d0a5543ec",
+        "changelog": "v0.3.0-prefetch-test.1. Automatic same-season prefetch, queue/status dashboard, bounded copying and conservative playback protection. See docs/PREFETCH_TEST.md.",
+        "sourceUrl": "https://everink404.github.io/jellyfin-smart-cache/packages/v0.3.0-prefetch-test.1/JellyCache.ReadProbe_0.3.0.0.zip",
+        "timestamp": "2026-10-13T11:54:55Z"
+      },
+      {
+        "version": "0.2.0.0",
+        "targetAbi": "12.1.0.0",
+        "checksum": "9a352379994eec91b85b661cf33c00ea",
+        "changelog": "v0.2.0-read-test.2. Single-plugin read routing experiment. See docs/READ_PROBE_TEST.md.",
+        "sourceUrl": "https://everink404.github.io/jellyfin-smart-cache/packages/v0.2.0-read-test.2/JellyCache.ReadProbe_0.2.0.0.zip",
+        "timestamp": "2026-10-11T12:31:51Z"
+      }
+    ]
+  },
+  {
+    "guid": "7dbbb7e6-2274-498c-af54-203587f64f52",
+    "name": "JellyCache experimental bridge",
+    "overview": "Experimental episode prefetch event bridge; separate Worker required.",
+    "description": "TEST ONLY. Built against Jellyfin 12.1.0 / .NET 10. Disabled by default. Requires a separately configured JellyCache Worker and stable media entry. Real Jellyfin/fnOS loading, FUSE, Docker visibility and playback are not verified. Do not change production /video mounts.",
+    "owner": "everink404",
+    "category": "General",
+    "versions": [
+      {
+        "version": "0.1.0.0",
+        "changelog": "v0.1.0-test.1 experimental prerelease. No production compatibility claim. See docs/JELLYFIN_PLUGIN.md for enablement and limitations.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://everink404.github.io/jellyfin-smart-cache/packages/v0.1.0-test.1/JellyCache.Plugin_0.1.0.0.zip",
+        "checksum": "fb4fee97ab6cf538f3689b83ffae7d91",
+        "timestamp": "2026-10-06T15:30:42Z"
+      }
+    ]
+  }
 ]

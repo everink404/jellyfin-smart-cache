@@ -1,0 +1,50 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+
+const html = fs.readFileSync(new URL('../plugin/JellyCache.ReadProbe/Configuration.html', import.meta.url), 'utf8');
+const elements = new Map([...html.matchAll(/id="([^"]+)"/g)].map(m => ['#' + m[1], {
+    value: '', checked: false, hidden: false, textContent: '', events: new Map(),
+    addEventListener(name, handler) { this.events.set(name, handler); }
+}]));
+const page = elements.get('#JellyCacheReadPage');
+page.querySelector = id => { assert(elements.has(id), `Unknown element ${id}`); return elements.get(id); };
+let configuration = { Enabled: true, AutomaticPrefetch: true, MediaRoot: '/video', CacheDirectory: '/excache/managed',
+    CapacityBytes: 10737418240, MinimumFreeBytes: 0, BytesPerSecond: 8388608, Strategy: 'ahead', Ahead: 2,
+    ValidationRevision: 4 };
+let updated;
+vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], {
+    document: { querySelector: () => page },
+    ApiClient: {
+        getPluginConfiguration: async () => ({ ...configuration }),
+        getUrl: path => path,
+        updatePluginConfiguration: async (_, value) => { updated = value; return {}; },
+        ajax: async ({ url }) => url.endsWith('PrefetchStatus')
+            ? { State: 'ready', RetainedSelections: 1, CacheSelections: 3, OriginSelections: 1,
+                Usage: { CompleteBytes: 8192, ReservedBytes: 0 }, Queue: [{ EpisodeNumber: 2, State: 'ready' }] }
+            : { State: 'disabled', CacheSelections: 0, FallbackSelections: 0 }
+    },
+    Dashboard: { hideLoadingMsg() {}, showLoadingMsg() {}, processPluginConfigurationUpdateResult() {} }
+});
+const flush = () => new Promise(resolve => setImmediate(resolve));
+page.events.get('pageshow')(); await flush();
+assert.equal(elements.get('#FreeGiB').value, 0, 'zero free-space setting preserved');
+assert.equal(elements.get('#AutoSettings').hidden, false);
+assert.match(elements.get('#ReadStatus').textContent, /第 2 集：缓存就绪/);
+elements.get('#CapacityGiB').value = '0.25';
+elements.get('#RateMiB').value = '0.5';
+elements.get('#PausePrefetch').checked = true;
+elements.get('#JellyCacheReadForm').events.get('submit')({ preventDefault() {} }); await flush();
+assert.equal(updated.CapacityBytes, 268435456, 'GiB converted to bytes');
+assert.equal(updated.BytesPerSecond, 524288, 'MiB/s converted to bytes');
+assert.equal(updated.MinimumFreeBytes, 0);
+assert.equal(updated.PausePrefetch, true);
+assert.equal(updated.AutomaticPrefetch, true);
+assert.equal(updated.ValidationRevision, 5, 'save enables failed initialization retry');
+configuration = { Enabled: false, SourcePath: '/video/E1.mkv', CachePath: '/excache/E1.mkv' };
+page.events.get('pageshow')(); await flush();
+assert.equal(elements.get('#ManualSettings').hidden, false, 'legacy config retains manual mode');
+assert.equal(elements.get('#AutoSettings').hidden, true);
+assert.equal(elements.get('#ReadSource').value, configuration.SourcePath);
+assert.match(elements.get('#ReadStatus').textContent, /未启用/);
+console.log('Configuration UI smoke checks passed (simulated DOM/API; no real Jellyfin browser).');
