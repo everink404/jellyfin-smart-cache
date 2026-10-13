@@ -145,11 +145,23 @@ foreach (var parameter in typeof(MediaSourceManager).GetConstructors().Single().
         System.Reflection.DispatchProxy.Create(parameter.ParameterType, typeof(UnusedDependency)));
 }
 typedServices.AddSingleton<IMediaSourceManager, MediaSourceManager>();
-typedServices.AddSingleton(System.Reflection.DispatchProxy.Create<MediaBrowser.Controller.Session.ISessionManager, UnusedDependency>());
+var routerResolved = false;
+var sessionsResolved = false;
+typedServices.AddSingleton<MediaBrowser.Controller.Session.ISessionManager>(sp =>
+{
+    if (!routerResolved) throw new InvalidOperationException("Media router must not eagerly resolve its session-dependent host.");
+    _ = sp.GetRequiredService<IMediaSourceManager>(); // Match the actual SessionManager dependency.
+    sessionsResolved = true;
+    return System.Reflection.DispatchProxy.Create<MediaBrowser.Controller.Session.ISessionManager, UnusedDependency>();
+});
 new JellyCache.ReadProbe.ServiceRegistrator().RegisterServices(typedServices, null!);
 using (var typedProvider = typedServices.BuildServiceProvider())
 {
     var resolved = typedProvider.GetRequiredService<IMediaSourceManager>();
+    routerResolved = true;
+    Check(!sessionsResolved, "media router resolves without eagerly constructing SessionManager");
+    _ = typedProvider.GetRequiredService<JellyCache.ReadProbe.PrefetchHost>();
+    Check(sessionsResolved, "host resolves after session-to-media dependency without a startup cycle");
     Check(resolved is JellyCache.ReadProbe.RoutingManager, "real plugin registrator decorates built-in service type through DI");
     Check(ReferenceEquals(resolved, typedProvider.GetRequiredService<IMediaSourceManager>()), "packaged decorator keeps singleton lifetime");
     resolved.AddParts([]);

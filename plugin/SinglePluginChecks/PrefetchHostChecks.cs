@@ -65,7 +65,7 @@ internal static class PrefetchHostChecks
             NullLogger<Emby.Server.Implementations.Library.MediaSourceManager>.Instance, null!, null!, null!, null!, null!, null!);
         builtin.AddParts([]);
         using var manual = new ProbeState(NullLogger<ProbeState>.Instance, new(true));
-        var router = new RoutingManager(builtin, manual, host);
+        var router = new RoutingManager(builtin, manual, new PrefetchAccess { Host = host });
         async Task Wait(Func<bool> condition, string name)
         {
             var deadline = DateTime.UtcNow.AddSeconds(12);

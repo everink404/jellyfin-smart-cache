@@ -11,10 +11,13 @@ using MediaBrowser.Model.MediaInfo;
 namespace JellyCache.ReadProbe;
 
 // Explicit forwarding: interface changes fail compilation instead of failing reflective invocation.
-public sealed class RoutingManager(IMediaSourceManager inner, ProbeState state, PrefetchHost prefetch = null) : IMediaSourceManager
+public sealed class RoutingManager(IMediaSourceManager inner, ProbeState state, PrefetchAccess access = null) : IMediaSourceManager
 {
     private IReadOnlyList<MediaSourceInfo> Select(BaseItem item, IReadOnlyList<MediaSourceInfo> sources, string stage)
-        => prefetch?.AutomaticMode == true ? prefetch.Select(item, sources, stage) : state.Select(item, sources, stage);
+    {
+        var prefetch = access?.Host;
+        return prefetch?.AutomaticMode == true ? prefetch.Select(item, sources, stage) : state.Select(item, sources, stage);
+    }
     public async Task<IReadOnlyList<MediaSourceInfo>> GetPlaybackMediaSources(BaseItem item, User user, bool allowMediaProbe, bool enablePathSubstitution, CancellationToken token)
     {
         var sources = await inner.GetPlaybackMediaSources(item, user, allowMediaProbe, enablePathSubstitution, token).ConfigureAwait(false);

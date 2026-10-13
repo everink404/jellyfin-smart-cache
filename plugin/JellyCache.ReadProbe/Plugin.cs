@@ -57,6 +57,7 @@ public sealed class ServiceRegistrator : IPluginServiceRegistrator
         services.AddSingleton(new RegistrationResult(supported));
         services.AddSingleton<ProbeState>();
         services.AddHostedService(sp => sp.GetRequiredService<ProbeState>());
+        services.AddSingleton<PrefetchAccess>();
         services.AddSingleton<PrefetchHost>();
         services.AddHostedService(sp => sp.GetRequiredService<PrefetchHost>());
         if (!supported) return; // Preserve unknown registrations, rather than breaking server startup.
@@ -65,7 +66,7 @@ public sealed class ServiceRegistrator : IPluginServiceRegistrator
         services.AddSingleton(sp => new ManagerOwner((IMediaSourceManager)
             ActivatorUtilities.CreateInstance(sp, original.ImplementationType!)));
         services.AddSingleton<IMediaSourceManager>(sp => new RoutingManager(
-            sp.GetRequiredService<ManagerOwner>().Manager, sp.GetRequiredService<ProbeState>(), sp.GetRequiredService<PrefetchHost>()));
+            sp.GetRequiredService<ManagerOwner>().Manager, sp.GetRequiredService<ProbeState>(), sp.GetRequiredService<PrefetchAccess>()));
     }
 }
 

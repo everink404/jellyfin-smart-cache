@@ -8,12 +8,12 @@
     "category": "General",
     "versions": [
       {
-        "version": "0.3.0.0",
+        "version": "0.3.1.0",
         "targetAbi": "12.1.0.0",
-        "checksum": "0fda262371e9045314d5741d0a5543ec",
-        "changelog": "v0.3.0-prefetch-test.1. Automatic same-season prefetch, queue/status dashboard, bounded copying and conservative playback protection. See docs/PREFETCH_TEST.md.",
-        "sourceUrl": "https://everink404.github.io/jellyfin-smart-cache/packages/v0.3.0-prefetch-test.1/JellyCache.ReadProbe_0.3.0.0.zip",
-        "timestamp": "2026-10-13T11:54:55Z"
+        "checksum": "358cde1b64cbd447e54ee19924b0625a",
+        "changelog": "v0.3.1-prefetch-test.1. Automatic same-season prefetch, queue/status dashboard, bounded copying and conservative playback protection. See docs/PREFETCH_TEST.md.",
+        "sourceUrl": "https://everink404.github.io/jellyfin-smart-cache/packages/v0.3.1-prefetch-test.1/JellyCache.ReadProbe_0.3.1.0.zip",
+        "timestamp": "2026-10-13T12:15:09Z"
       },
       {
         "version": "0.2.0.0",

@@ -1,4 +1,4 @@
-param([string]$Tag = 'v0.3.0-prefetch-test.1')
+param([string]$Tag = 'v0.3.1-prefetch-test.1')
 $ErrorActionPreference = 'Stop'
 if ($Tag -notmatch '^[A-Za-z0-9_.-]+$') { throw 'Invalid tag' }
 $projectRoot = Split-Path -Parent $PSScriptRoot

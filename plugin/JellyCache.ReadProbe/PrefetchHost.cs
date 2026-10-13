@@ -12,6 +12,14 @@ using Microsoft.Extensions.Logging;
 
 namespace JellyCache.ReadProbe;
 
+// The media router resolves this dependency-free accessor, never the hosted service.
+// SessionManager itself needs IMediaSourceManager, so eager host injection would cycle.
+public sealed class PrefetchAccess
+{
+    private PrefetchHost? host;
+    public PrefetchHost? Host { get => Volatile.Read(ref host); set => Volatile.Write(ref host, value); }
+}
+
 public sealed record StorageSettings(string MediaRoot, string CacheRoot, long Capacity, long MinimumFree, long Rate);
 public sealed record PrefetchSettings(bool Enabled, bool Automatic, bool Paused, StorageSettings Storage, string Strategy, int Ahead, int Revision = 0)
 {
@@ -43,8 +51,9 @@ public sealed class PrefetchHost : BackgroundService
     private string? lastError;
     private long hits, origins;
 
-    public PrefetchHost(ISessionManager sessions, ILibraryManager library, RegistrationResult registration, ILogger<PrefetchHost> logger)
-        : this(sessions, library, registration, logger, PrefetchSettings.Current) { }
+    public PrefetchHost(ISessionManager sessions, ILibraryManager library, RegistrationResult registration,
+        ILogger<PrefetchHost> logger, PrefetchAccess access)
+        : this(sessions, library, registration, logger, PrefetchSettings.Current) { access.Host = this; }
     public PrefetchHost(ISessionManager sessions, ILibraryManager library, RegistrationResult registration,
         ILogger<PrefetchHost> logger, Func<PrefetchSettings> settings)
     { this.sessions = sessions; this.library = library; this.registration = registration; this.logger = logger; this.settings = settings; }
