@@ -2,11 +2,19 @@
   {
     "guid": "d9ed3154-82f7-4e4b-9b74-24831fc59d65",
     "name": "JellyCache single-plugin read test",
-    "overview": "Single-episode local cache routing test; no Worker or FUSE.",
-    "description": "TEST ONLY. Jellyfin 12.1.0. Disabled by default. Configure one original episode and an identical local copy in the plugin dashboard. No automatic prefetch or eviction. Real NAS playback remains unverified.",
+    "overview": "Single-plugin same-season prefetch and local cache routing test.",
+    "description": "TEST ONLY. Jellyfin 12.1.0. Disabled by default. Enable automatic mode and configure a dedicated empty cache directory. Default Ahead 2, bounded copying and capacity. Selected cache files stay protected until restart. Manual 0.2-style reading mode remains available. Automatic mode real NAS playback is unverified.",
     "owner": "everink404",
     "category": "General",
     "versions": [
+      {
+        "version": "0.3.0.0",
+        "targetAbi": "12.1.0.0",
+        "checksum": "0fda262371e9045314d5741d0a5543ec",
+        "changelog": "v0.3.0-prefetch-test.1. Automatic same-season prefetch, queue/status dashboard, bounded copying and conservative playback protection. See docs/PREFETCH_TEST.md.",
+        "sourceUrl": "https://everink404.github.io/jellyfin-smart-cache/packages/v0.3.0-prefetch-test.1/JellyCache.ReadProbe_0.3.0.0.zip",
+        "timestamp": "2026-10-13T11:54:55Z"
+      },
       {
         "version": "0.2.0.0",
         "targetAbi": "12.1.0.0",
