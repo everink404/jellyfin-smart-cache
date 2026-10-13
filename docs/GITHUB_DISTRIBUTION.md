@@ -33,6 +33,8 @@ Pages 从 `codex/plugin-distribution` 分支根目录发布，仅包含 `.nojeky
 
 ## 安装测试
 
+2026-10-13 已通过原 Pages 地址更新 **JellyCache single-plugin read test 0.3.0.0**，GUID保持不变，保留0.2版本及旧桥接版。新包根目录包含ReadProbe.dll、Core.dll和ReadProbe.deps.json；新增自动预取模式，默认不自动开启。167项C#检查、页面模拟检查和在线ZIP／清单复核通过，实际容器验收见 [自动预取测试](PREFETCH_TEST.md)。本次没有创建新的GitHub Release或分发入口。
+
 2026-10-11 已加入 **JellyCache single-plugin read test 0.2.0.0**：原 Pages 仓库地址不变，刷新插件目录后选择该新条目，安装后重启并在插件网页配置测试文件。它无需 Worker/FUSE，仅测试一集的完整缓存读取，不自动预取；步骤见 [读取测试版](READ_PROBE_TEST.md)。新 ZIP 匿名下载与清单校验已通过，详见 STATUS B-20261011-05。旧桥接条目与包保留，以下为旧版说明。
 
 在独立 Jellyfin 测试实例的管理后台插件仓库中添加上述清单地址，在目录找到 `JellyCache experimental bridge`，安装后重启实例。目标为 Jellyfin 12.1.0 / .NET 10；较低版本可能被 ABI 过滤，较高版本显示也不代表已验证兼容。实际服务端完整版本仍需核实。

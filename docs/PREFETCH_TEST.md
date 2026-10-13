@@ -6,6 +6,8 @@
 
 插件仓库地址保持 `https://everink404.github.io/jellyfin-smart-cache/manifest.json`。只有目录显示 **0.3.0.0** 并安装重启后，才能测试本页的自动预取功能；发布进度以 STATUS 为准。若仍显示 0.2.0.0，刷新仓库和目录，不必重新建立仓库。
 
+2026-10-13 已发布并匿名下载校验：[0.3.0.0 ZIP](https://everink404.github.io/jellyfin-smart-cache/packages/v0.3.0-prefetch-test.1/JellyCache.ReadProbe_0.3.0.0.zip)。SHA-256：`ca727e70a2dfeadc37c24ce578bc20e1476283a8080d00c0fa662117d2cb7c6f`。自动模式真实容器功能仍待验收。
+
 1. 停止播放，升级已有 JellyCache single-plugin read test，重启 Jellyfin。不要同时安装旧目录下 DLL 的手工副本。
 2. 打开插件配置，勾选“启用插件”和“自动预取模式”。新安装默认关闭，升级保留原手动配置；不会自动切到预取模式。
 3. 媒体根目录填写容器内 `/video`，或实际剧集根目录。缓存目录填写容器内专用空目录，例如 `/excache/jellycache-managed`。原手动副本所在 `/excache` 非空，不能直接作为新受管根目录；必须用新的专用子目录。它须位于本地磁盘且可写，并与媒体根目录分开。插件不创建 Docker 挂载。
