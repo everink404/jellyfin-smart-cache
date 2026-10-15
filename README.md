@@ -2,15 +2,15 @@
 
 本项目从零开发 Jellyfin 剧集智能预取缓存系统：用户观看当前集时预取同季后续集，在 NAS 有限空间内改善连续观看体验。后续播放通过稳定媒体入口优先读取完整有效的本地缓存，未命中时尝试原远端来源；保留原媒体条目、续播和播放历史。
 
-2026-10-06 已取得目标文档 v0.1 草案。已有缓存核心、只读文件入口、后台预取队列、控制服务与 Jellyfin 12.1 桥接原型；随后优先推进单插件路线。2026-10-12 用户容器已验证单插件缓存转码播放、拖动与回源；0.3已连接事件、预取、存储、媒体源包装和配置页，169项C#检查通过，自动预取仍待真实容器验收。各批检查与验收分别见 STATUS。
+2026-10-06 已取得目标文档 v0.1 草案。已有缓存核心、只读文件入口、后台预取队列、控制服务与 Jellyfin 12.1 桥接原型；随后优先推进单插件路线。2026-10-12 用户容器已验证单插件缓存转码播放、拖动与回源；0.3已连接事件、预取、存储、媒体源包装和配置页，169项C#检查通过，用户已确认自动预取缓存播放正常，2026-10-15通过MCP日志继续确认多集命中与完整缓存跨重启恢复；暂停／容量压力等仍待验收。各批检查与验收分别见 STATUS。
 
 ## 测试插件安装
 
 公开仓库：[everink404/jellyfin-smart-cache](https://github.com/everink404/jellyfin-smart-cache)。[v0.1.0-test.1 测试安装包](https://github.com/everink404/jellyfin-smart-cache/releases/tag/v0.1.0-test.1) 已发布。
 
-在独立 Jellyfin 测试实例的插件仓库中添加以下地址。自动预取实验请选择 **`JellyCache single-plugin read test` 0.3.1.0**，升级后重启；保留原插件名与GUID以支持升级。旧的 `JellyCache experimental bridge` 是独立的事件桥接版。
+在独立 Jellyfin 测试实例的插件仓库中添加以下地址。自动预取实验请选择 **`JellyCache single-plugin read test` 0.4.0.0**，升级后重启；保留原插件名与GUID以支持升级。旧的 `JellyCache experimental bridge` 是独立的事件桥接版。
 
-**0.3.1.0 自动预取测试版已通过原 Pages 插件库发布**，公开清单与安装包校验通过，测试步骤见 [自动预取验收](docs/PREFETCH_TEST.md)。它沿用原插件身份，新增自动模式；新安装默认关闭，升级保留手动模式。0.2旧包与版本记录保留。
+**0.4.0.0 生命周期接入测试成品**沿用原 Pages 插件库，实际请求、ffmpeg、字幕与附件任务已接入占用保护和安全释放。完整隔离 Jellyfin 12.1 宿主验证及239项C#检查通过；NAS新版验收仍待进行。安装、证据、校验与回退见 [M1交付](docs/M1_DELIVERY.md)，线上核验见 STATUS。新安装默认关闭，升级保留配置；0.3.1和0.2旧包保留。
 
 ```text
 https://everink404.github.io/jellyfin-smart-cache/manifest.json
@@ -22,6 +22,8 @@ https://everink404.github.io/jellyfin-smart-cache/manifest.json
 
 ## 资料导航
 
+- [单插件交付计划](docs/DELIVERY_PLAN.md)：M1可安装接入测试版、M2功能完善与真实验收、M3收益与最终验收基线；后续按交付批次推进。
+- [播放占用释放设计](docs/PLAYBACK_LEASE_PLAN.md)：协商、直接读取、转码与字幕的保护边界及实施门槛。
 - [项目目标](docs/Jellyfin剧集智能预取缓存系统-项目目标文档.md)：产品范围、设计基线和 v0.1 验收要求。
 - [首批接入验证方案](docs/INTEGRATION_VALIDATION.md)：当前环境信息缺口、最小验证步骤与通过条件。
 - [来源诊断脚本](scripts/probe-source.sh)：在 NAS 核对现有文件夹映射和读取前提，使用方法见验证方案。
@@ -31,7 +33,8 @@ https://everink404.github.io/jellyfin-smart-cache/manifest.json
 - [Jellyfin 事件桥接插件](docs/JELLYFIN_PLUGIN.md)：12.1 插件、构建、测试配置与连接前提。
 - [单插件接入验证](docs/SINGLE_PLUGIN_VALIDATION.md)：优先调查插件内部缓存切换，记录源码／接口证据及真实播放缺口。
 - [单插件读取测试版](docs/READ_PROBE_TEST.md)：独立测试插件的配置、同条目读取与回源验证。
-- [自动预取测试版](docs/PREFETCH_TEST.md)：0.3.1.0 配置、E01→E02/E03 预取和实际命中验收。
+- [M1生命周期交付](docs/M1_DELIVERY.md)：0.4.0.0 安装、实际宿主证据、校验与回退。
+- [自动预取测试版](docs/PREFETCH_TEST.md)：0.4.0.0 配置、E01→E02/E03 预取和实际命中验收。
 - [单插件预取演进](docs/SINGLE_PLUGIN_PREFETCH.md)：已验证版本的保留检查点、进程内预取实现顺序与当前代码边界。
 - [单插件存储核心](docs/SINGLE_PLUGIN_STORAGE.md)：受限复制、容量预留、完整校验、持久恢复与占用租约的实现和接入限制。
 - [GitHub 测试分发](docs/GITHUB_DISTRIBUTION.md)：源码上传、插件打包、测试 Release 与 Jellyfin 清单。

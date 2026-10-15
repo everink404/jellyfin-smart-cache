@@ -54,20 +54,28 @@ public sealed class ServiceRegistrator : IPluginServiceRegistrator
         var supported = typeof(IMediaSourceManager).Assembly.GetName().Version == new Version(12, 1, 0, 0)
             && candidates.Length == 1 && candidates[0].Lifetime == ServiceLifetime.Singleton
             && candidates[0].ImplementationType?.FullName == "Emby.Server.Implementations.Library.MediaSourceManager";
-        services.AddSingleton(new RegistrationResult(supported));
+        var lifecycle = supported && EncodingRegistration.CanWrap(services);
+        services.AddSingleton(new RegistrationResult(supported, lifecycle));
         services.AddSingleton<ProbeState>();
         services.AddHostedService(sp => sp.GetRequiredService<ProbeState>());
         services.AddSingleton<PrefetchAccess>();
+        services.AddHttpContextAccessor();
         services.AddSingleton<PrefetchHost>();
         services.AddHostedService(sp => sp.GetRequiredService<PrefetchHost>());
+        if (lifecycle)
+        {
+            services.AddSingleton<Microsoft.AspNetCore.Hosting.IStartupFilter, ReadLeaseStartupFilter>();
+            EncodingRegistration.Wrap(services);
+        }
         if (!supported) return; // Preserve unknown registrations, rather than breaking server startup.
         var original = candidates[0];
         services.Remove(original);
         services.AddSingleton(sp => new ManagerOwner((IMediaSourceManager)
             ActivatorUtilities.CreateInstance(sp, original.ImplementationType!)));
         services.AddSingleton<IMediaSourceManager>(sp => new RoutingManager(
-            sp.GetRequiredService<ManagerOwner>().Manager, sp.GetRequiredService<ProbeState>(), sp.GetRequiredService<PrefetchAccess>()));
+            sp.GetRequiredService<ManagerOwner>().Manager, sp.GetRequiredService<ProbeState>(), sp.GetRequiredService<PrefetchAccess>(),
+            sp.GetRequiredService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()));
     }
 }
 
-public sealed record RegistrationResult(bool Supported);
+public sealed record RegistrationResult(bool Supported, bool LifecycleSupported = false);

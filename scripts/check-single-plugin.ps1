@@ -1,4 +1,4 @@
-param([switch]$FetchSource)
+param([switch]$FetchSource, [switch]$HttpRead)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $commit = 'ee91c75e777da41a9c4f4855e70adc604fbf2ef8'
@@ -22,6 +22,12 @@ foreach ($name in $expected.Keys) {
         throw "Upstream source digest mismatch: $name"
     }
 }
+if ($HttpRead) {
+    $helper = Join-Path $sourceRoot 'Jellyfin.Api/Helpers/FileStreamResponseHelpers.cs'
+    if ((Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash -ne 'DD9F2A2EB73B1DB562D9FF4E70B4CCD94AA79B92ED48086266D7C26ECD034E89') {
+        throw 'Pinned physical-file response helper digest mismatch.'
+    }
+}
 $localSdk = Join-Path $projectRoot '.tools/dotnet/dotnet.exe'
 $dotnetExe = if (Test-Path -LiteralPath $localSdk) { $localSdk } else { (Get-Command dotnet -ErrorAction Stop).Source }
 $env:DOTNET_CLI_HOME = Join-Path $projectRoot '.tools/dotnet-home'
@@ -34,7 +40,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Research dependency restore failed' }
     & $dotnetExe build $checks -c Release --no-restore --nologo -m:1 -p:UseSharedCompilation=false
     if ($LASTEXITCODE -ne 0) { throw 'Single-plugin checks build failed' }
-    & $dotnetExe run --project $checks -c Release --no-restore --no-build --nologo |
+    $extraArgs = if ($HttpRead) { @('--', '--http') } else { @() }
+    & $dotnetExe run --project $checks -c Release --no-restore --no-build --nologo @extraArgs |
         Tee-Object -FilePath (Join-Path $researchRoot 'checks.log')
     if ($LASTEXITCODE -ne 0) { throw 'Single-plugin source/interface experiment failed' }
 } finally { Pop-Location }

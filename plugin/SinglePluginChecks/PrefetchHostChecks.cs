@@ -11,6 +11,8 @@ using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.MediaInfo;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.AspNetCore.Http;
+using MediaBrowser.Controller.MediaEncoding;
 
 internal static class PrefetchHostChecks
 {
@@ -60,7 +62,7 @@ internal static class PrefetchHostChecks
         var sessionManager = DispatchProxy.Create<ISessionManager, TestProxy>();
         var sessionProxy = (TestProxy)(object)sessionManager;
         var settings = new PrefetchSettings(true, true, false, new(media, Path.Combine(root, "managed"), 32768, 0, 1024 * 1024 * 1024), "ahead", 2);
-        using var host = new PrefetchHost(sessionManager, lib, new(true), NullLogger<PrefetchHost>.Instance, () => settings);
+        using var host = new PrefetchHost(sessionManager, lib, new(true, true), NullLogger<PrefetchHost>.Instance, () => settings);
         using var builtin = new Emby.Server.Implementations.Library.MediaSourceManager(null!, null!, null!, null!, null!, null!,
             NullLogger<Emby.Server.Implementations.Library.MediaSourceManager>.Instance, null!, null!, null!, null!, null!, null!);
         builtin.AddParts([]);
@@ -86,7 +88,56 @@ internal static class PrefetchHostChecks
             sessionProxy.Raise("PlaybackStart", Args(episodes[0], "play1"));
             await Wait(() => host.Snapshot().Queue.Count == 2 && host.Snapshot().Queue.All(q => q.State == "ready"), "real season adapter and events produce two verified copies");
             Check(host.Snapshot().Queue.Select(q => q.EpisodeNumber).SequenceEqual([2, 3]), "same-season window");
+            await Wait(() => host.Snapshot().LastAttempt?.Outcome == "ready", "completed copy diagnostic published");
+            Check(host.Snapshot().LastAttempt is { Outcome: "ready", Failures: 0, ErrorType: null }, "admin snapshot retains copy diagnostic");
             var before = Sources(episodes[1]);
+            Check(host.Select(episodes[1], before, "negotiation").Single().Path == episodes[1].Path && host.Snapshot().Usage!.Leases == 0,
+                "lifecycle negotiation keeps origin metadata without speculative protection");
+            string scopedPath;
+            using (var scope = new ReadLeaseScope())
+            {
+                var context = new DefaultHttpContext(); context.Features.Set(scope);
+                scopedPath = host.Select(episodes[1], before, "stream-resolution", context).Single().Path;
+                Check(scopedPath != episodes[1].Path && host.Snapshot().RetainedSelections == 0 && host.Snapshot().Usage!.Leases == 1,
+                    "actual request scope protects route without until-restart pin");
+            }
+            Check(host.Snapshot().Usage!.Leases == 0, "actual route request completion releases cache");
+            var rawSubtitles = DispatchProxy.Create<ISubtitleEncoder, ObservationProxy>();
+            var finishSubtitle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            ((ObservationProxy)(object)rawSubtitles).Handler = (_, _) => finishSubtitle.Task;
+            var protectedSubtitles = new ProtectedSubtitleEncoder(rawSubtitles, new PrefetchAccess { Host = host });
+            var extracting = protectedSubtitles.ExtractAllExtractableSubtitles(new() { Path = scopedPath }, default);
+            Check(host.Snapshot().Usage!.Leases == 1, "subtitle decorator pins existing descriptor before extraction");
+            finishSubtitle.SetResult(); await extracting;
+            Check(host.Snapshot().Usage!.Leases == 0, "successful subtitle task releases operation protection");
+            using var oldJob = new TranscodingJob(NullLogger<TranscodingJob>.Instance) { HasExited = true, MediaSource = new() { Path = scopedPath } };
+            var rawTranscode = DispatchProxy.Create<ITranscodeManager, ObservationProxy>();
+            ((ObservationProxy)(object)rawTranscode).Handler = (_, _) => oldJob;
+            var accessor = new HttpContextAccessor();
+            var protectedTranscode = new ProtectedTranscodeManager(rawTranscode, new PrefetchAccess { Host = host }, accessor);
+            Check(protectedTranscode.GetTranscodingJob("old-playback") is null, "exited cached job forces fresh source resolution before seek");
+            oldJob.HasExited = false;
+            using (var scope = new ReadLeaseScope())
+            {
+                accessor.HttpContext = new DefaultHttpContext(); accessor.HttpContext.Features.Set(scope);
+                Check(ReferenceEquals(protectedTranscode.GetTranscodingJob("active-playback"), oldJob) && host.Snapshot().Usage!.Leases == 1,
+                    "reused active job descriptor acquires request transition pin");
+            }
+            accessor.HttpContext = null;
+            Check(host.Snapshot().Usage!.Leases == 0, "reused-job request releases its own pin");
+            var rawAttachments = DispatchProxy.Create<IAttachmentExtractor, ObservationProxy>();
+            ((ObservationProxy)(object)rawAttachments).Handler = (_, _) => Task.FromException(new IOException("synthetic unconfirmed process failure"));
+            var protectedAttachments = new ProtectedAttachmentExtractor(rawAttachments, new PrefetchAccess { Host = host });
+            try { await protectedAttachments.ExtractAllAttachments(scopedPath, new() { Path = scopedPath }, default); }
+            catch (IOException) { }
+            Check(host.Snapshot().RetainedSelections == 1 && host.Snapshot().Usage!.Leases == 1,
+                "unconfirmed native task failure retains conservative protection");
+            using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
+            ((ObservationProxy)(object)rawAttachments).Handler = (_, _) => Task.FromCanceled(cancellation.Token);
+            try { await protectedAttachments.ExtractAllAttachments(scopedPath, new() { Path = scopedPath }, cancellation.Token); }
+            catch (OperationCanceledException) { }
+            Check(host.Snapshot().RetainedSelections == 1 && host.Snapshot().Usage!.Leases == 1,
+                "repeated uncertain cancellation deduplicates conservative cache pins");
             var hit = host.Select(episodes[1], before, "stream-resolution").Single();
             Check(hit.Path != episodes[1].Path && File.ReadAllBytes(hit.Path).SequenceEqual(File.ReadAllBytes(episodes[1].Path)), "host route selects copied bytes");
             Check(before.Single().Path == episodes[1].Path && hit.Id == before.Single().Id && hit.EncoderPath is null, "descriptor and identity preserved");
@@ -94,6 +145,8 @@ internal static class PrefetchHostChecks
             Check((await router.GetMediaSource(episodes[1], episodes[1].Id.ToString("N"), null!, false, default)).Path == hit.Path, "automatic source-ID re-resolution flows through pinned built-in manager");
             host.Select(episodes[1], before, "source-lookup");
             Check(host.Snapshot().RetainedSelections == 1 && host.Snapshot().Usage!.Leases == 1, "one retained lease covers repeated resolution");
+            Check(host.Snapshot().Protections!.Single() is { FirstStage: "stream-resolution", LastStage: "source-lookup", Selections: 4, ReleasePolicy: "until-host-stops" },
+                "bounded protection diagnostic aggregates repeated resolution without another lease");
             Check(host.Select(episodes[1], [before[0], before[0]], "stream-resolution").First().Path == episodes[1].Path, "multiple versions bypass routing");
             settings = settings with { Paused = true };
             await Wait(() => host.Snapshot().State == "paused", "pause reaches host");
@@ -115,6 +168,7 @@ internal static class PrefetchHostChecks
             Check(host.Snapshot().Queue.Count == 1, "delayed old stop does not clear new demand");
             await host.StopAsync(default);
             Check(host.Snapshot().State == "stopped" && host.Snapshot().RetainedSelections == 0, "shutdown joins copy before releasing retained leases");
+            Check(host.Snapshot().Protections!.Count == 0, "shutdown clears protection observations with leases");
         }
         finally
         {

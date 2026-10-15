@@ -1,4 +1,4 @@
-param([string]$Tag = 'v0.3.1-prefetch-test.1')
+param([string]$Tag = 'v0.4.0-lifecycle-test.1')
 $ErrorActionPreference = 'Stop'
 if ($Tag -notmatch '^[A-Za-z0-9_.-]+$') { throw 'Invalid tag' }
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -16,11 +16,11 @@ $sha = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvari
 $manifest = @([ordered]@{
     guid = 'd9ed3154-82f7-4e4b-9b74-24831fc59d65'; name = 'JellyCache single-plugin read test'
     overview = 'Single-plugin same-season prefetch and local cache routing test.'
-    description = 'TEST ONLY. Jellyfin 12.1.0. Disabled by default. Enable automatic mode and configure a dedicated empty cache directory. Default Ahead 2, bounded copying and capacity. Selected cache files stay protected until restart. Manual 0.2-style reading mode remains available. Automatic mode real NAS playback is unverified.'
+    description = 'TEST ONLY. Jellyfin 12.1.0. Disabled by default; upgrades retain configuration. Automatic Ahead 2 with bounded storage. Known official 12.1 services use request, ffmpeg, subtitle and attachment lifetime protection; uncertain operations remain protected until restart. Full isolated Jellyfin 12.1 and ffmpeg verified on Windows; NAS 0.4 acceptance remains pending. Manual reading mode remains available.'
     owner = 'everink404'; category = 'General'
     versions = @([ordered]@{
         version = $version; targetAbi = '12.1.0.0'; checksum = $md5
-        changelog = "$Tag. Automatic same-season prefetch, queue/status dashboard, bounded copying and conservative playback protection. See docs/PREFETCH_TEST.md."
+        changelog = "$Tag. M1 lifecycle integration: reclaim after actual reads/process completion, avoid speculative pins, handle stale exited jobs, classify copy failures. See docs/M1_DELIVERY.md and docs/PREFETCH_TEST.md."
         sourceUrl = "https://everink404.github.io/jellyfin-smart-cache/packages/$Tag/$name"
         timestamp = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
     })

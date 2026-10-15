@@ -177,6 +177,9 @@ Check(resource.Contains("JellyCache.ReadProbe.Configuration.html"), "dashboard c
 probeState.Dispose();
 Console.WriteLine($"{checks} checks passed. Source/interface fixture only; no actual Jellyfin playback or ffmpeg executed.");
 await PrefetchHostChecks.Run();
+await ReadObservationChecks.Run();
+await ReadLeaseScopeChecks.Run();
+if (args.Contains("--http")) await HttpReadChecks.Run();
 
 sealed class FixtureEpisode : Episode, IHasMediaSources
 {

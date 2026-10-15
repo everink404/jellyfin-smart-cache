@@ -31,6 +31,10 @@ Pages 从 `codex/plugin-distribution` 分支根目录发布，仅包含 `.nojeky
 
 后续新版本先完成原包检查，再把相同 ZIP、摘要和更新后的 Pages 清单提交到该分支；保留旧版本包路径。GitHub 使用内置 Pages 构建部署流程，不新增源码构建、定时发布或自动更新插件工作流。
 
+## 当前M1分发
+
+0.4.0.0沿用main源码和codex/plugin-distribution静态分发分支。版本目录v0.4.0-lifecycle-test.1，旧包保留，不创建新Release或新入口。实际宿主、校验和回退见[M1交付](M1_DELIVERY.md)，在线核验见STATUS；以下0.3.1及首次Release说明为历史。
+
 ## 安装测试
 
 2026-10-13 已通过原 Pages 地址更新 **JellyCache single-plugin read test 0.3.1.0**，GUID保持不变，保留0.2版本及旧桥接版。新包根目录包含ReadProbe.dll、Core.dll和ReadProbe.deps.json；新增自动预取模式，默认不自动开启。169项C#检查、页面模拟检查和在线ZIP／清单复核通过，实际容器验收见 [自动预取测试](PREFETCH_TEST.md)。本次没有创建新的GitHub Release或分发入口。

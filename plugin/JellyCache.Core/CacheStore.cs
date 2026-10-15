@@ -4,6 +4,11 @@ using System.Text.Json;
 
 namespace JellyCache.Core;
 
+public sealed class CacheCopyException(string reason) : IOException(reason)
+{
+    public string Reason { get; } = reason;
+}
+
 public sealed record CacheLimits(long CapacityBytes, long MinimumFreeBytes, long BytesPerSecond = 8 * 1024 * 1024);
 public sealed record SourceVersion(long Length, long ModifiedTicks)
 {
@@ -12,7 +17,7 @@ public sealed record SourceVersion(long Length, long ModifiedTicks)
         CacheStore.RequirePlainPath(path);
         var file = new FileInfo(path);
         if (!file.Exists || file.Length <= 0 || file.Attributes.HasFlag(FileAttributes.Directory))
-            throw new IOException("Source is not a nonempty regular file.");
+            throw new CacheCopyException("source-invalid-or-unavailable");
         return new(file.Length, file.LastWriteTimeUtc.Ticks);
     }
 }
@@ -150,9 +155,9 @@ public sealed class CacheStore : IDisposable
                 {
                     var size = await input.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, version.Length - copied)), token)
                         .ConfigureAwait(false);
-                    if (size == 0) throw new IOException("Source became shorter during copy.");
+                    if (size == 0) throw new CacheCopyException("source-shortened");
                     RequirePlainPath(root);
-                    if (availableBytes() - limits.MinimumFreeBytes < size) throw new IOException("Disk safety margin reached.");
+                    if (availableBytes() - limits.MinimumFreeBytes < size) throw new CacheCopyException("disk-safety-margin");
                     await output.WriteAsync(buffer.AsMemory(0, size), token).ConfigureAwait(false);
                     digest.AppendData(buffer, 0, size);
                     copied += size;
@@ -160,20 +165,20 @@ public sealed class CacheStore : IDisposable
                     if (wait > 0) await Task.Delay(TimeSpan.FromSeconds(wait), token).ConfigureAwait(false);
                 }
                 if (await input.ReadAsync(buffer.AsMemory(0, 1), token).ConfigureAwait(false) != 0)
-                    throw new IOException("Source grew during copy.");
+                    throw new CacheCopyException("source-grew");
                 await output.FlushAsync(token).ConfigureAwait(false);
                 output.Flush(flushToDisk: true);
                 hash = Convert.ToHexString(digest.GetHashAndReset());
             }
-            if (SourceVersion.Read(source) != version) throw new IOException("Source changed during copy.");
+            if (SourceVersion.Read(source) != version) throw new CacheCopyException("source-changed");
             await using (var local = File.OpenRead(Data(id, true)))
                 if (Convert.ToHexString(await SHA256.HashDataAsync(local, token).ConfigureAwait(false)) != hash)
-                    throw new IOException("Copied data failed verification.");
+                    throw new CacheCopyException("verification-failed");
             token.ThrowIfCancellationRequested();
             lock (gate)
             {
                 RequirePlainPath(root);
-                if (SourceVersion.Read(source) != version) throw new IOException("Source changed before publication.");
+                if (SourceVersion.Read(source) != version) throw new CacheCopyException("source-changed");
                 File.Move(Data(id, true), Data(id, false));
                 var complete = pending with { Complete = true, Hash = hash, LocalVersion = SourceVersion.Read(Data(id, false)) };
                 entries[entries.IndexOf(pending)] = complete;

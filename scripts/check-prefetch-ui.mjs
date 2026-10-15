@@ -20,8 +20,10 @@ vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], {
         getUrl: path => path,
         updatePluginConfiguration: async (_, value) => { updated = value; return {}; },
         ajax: async ({ url }) => url.endsWith('PrefetchStatus')
-            ? { State: 'ready', RetainedSelections: 1, CacheSelections: 3, OriginSelections: 1,
-                Usage: { CompleteBytes: 8192, ReservedBytes: 0 }, Queue: [{ EpisodeNumber: 2, State: 'ready' }] }
+            ? { State: 'ready', RetainedSelections: 1, CacheSelections: 3, OriginSelections: 1, LifecycleRouting: true,
+                Usage: { CompleteBytes: 8192, ReservedBytes: 0 }, Queue: [{ EpisodeNumber: 2, State: 'ready' }],
+                LastAttempt: { Outcome: 'copy-failed', Reason: 'disk-safety-margin', ErrorType: 'CacheCopyException', Failures: 1, ElapsedMilliseconds: 1200 },
+                Protections: [{Id: '12345678-fixture', Request: { Kind: 'video-request', JobState: 'matching-job-exited' }}] }
             : { State: 'disabled', CacheSelections: 0, FallbackSelections: 0 }
     },
     Dashboard: { hideLoadingMsg() {}, showLoadingMsg() {}, processPluginConfigurationUpdateResult() {} }
@@ -31,6 +33,10 @@ page.events.get('pageshow')(); await flush();
 assert.equal(elements.get('#FreeGiB').value, 0, 'zero free-space setting preserved');
 assert.equal(elements.get('#AutoSettings').hidden, false);
 assert.match(elements.get('#ReadStatus').textContent, /第 2 集：缓存就绪/);
+assert.match(elements.get('#ReadStatus').textContent, /磁盘安全余量不足/);
+assert.match(elements.get('#ReadStatus').textContent, /累计失败 1 次；耗时 1.2 秒/);
+assert.match(elements.get('#ReadStatus').textContent, /匹配作业已退出；仍保护至重启/);
+assert.match(elements.get('#ReadStatus').textContent, /按请求和任务结束释放/);
 elements.get('#CapacityGiB').value = '0.25';
 elements.get('#RateMiB').value = '0.5';
 elements.get('#PausePrefetch').checked = true;

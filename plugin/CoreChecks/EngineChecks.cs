@@ -38,7 +38,9 @@ internal static class EngineChecks
         {
             var engine = new PrefetchEngine(store, clock);
             engine.Update("viewer", missing[0], missing, PrefetchStrategy.Next);
-            Check((await engine.RunNextAsync())?.Outcome == "copy-failed", "copy failure isolated");
+            var failed = await engine.RunNextAsync();
+            Check(failed?.Outcome == "copy-failed", "copy failure isolated");
+            Check(failed is { Failures: 1, Reason: "source-invalid-or-unavailable", ErrorType: not null, RetryAfter: not null }, "failure diagnostic includes category and backoff");
             Check(await engine.RunNextAsync() is null, "retry is backed off");
             clock.Advance(TimeSpan.FromSeconds(6)); await engine.RunNextAsync();
             clock.Advance(TimeSpan.FromSeconds(31)); await engine.RunNextAsync();
@@ -54,10 +56,27 @@ internal static class EngineChecks
             engine.Update("viewer", episodes[0], episodes);
             var copying = engine.RunNextAsync();
             await Task.Delay(100); engine.SetPaused(true);
-            Check((await copying)?.Outcome == "cancelled" && store.Usage.ReservedBytes == 0, "pause cancels and cleans active copy");
+            var cancelled = await copying;
+            Check(cancelled?.Outcome == "cancelled" && store.Usage.ReservedBytes == 0, "pause cancels and cleans active copy");
+            Check(cancelled is { Reason: "paused", Failures: 0, ErrorType: null } && cancelled.ElapsedMilliseconds > 0, "pause does not consume retry budget");
             engine.SetPaused(false); copying = engine.RunNextAsync();
             await Task.Delay(100); engine.Update("viewer", episodes[3], episodes);
-            Check((await copying)?.Outcome == "cancelled", "jump cancels obsolete copy");
+            Check((await copying) is { Outcome: "cancelled", Reason: "demand-changed" }, "jump cancels obsolete copy");
+            engine.Update("viewer", episodes[0], episodes);
+            using var shutdown = new CancellationTokenSource();
+            copying = engine.RunNextAsync(shutdown.Token);
+            await Task.Delay(100); shutdown.Cancel();
+            Check((await copying) is { Outcome: "cancelled", Reason: "host-stopping", Failures: 0 }
+                && store.Usage.ReservedBytes == 0, "shutdown classified without failure and cleans reservation");
+        }
+        var spaceCalls = 0;
+        using (var store = new CacheStore(Path.Combine(directory, "disk-error"), new(16384, 0),
+            () => ++spaceCalls == 1 ? long.MaxValue : 0))
+        {
+            var engine = new PrefetchEngine(store, clock);
+            engine.Update("viewer", episodes[0], episodes, PrefetchStrategy.Next);
+            Check((await engine.RunNextAsync()) is { Outcome: "copy-failed", Reason: "disk-safety-margin", Failures: 1 }
+                && store.Usage.ReservedBytes == 0, "mid-copy disk margin distinguished and cleans reservation");
         }
         var inbox = new PlaybackInbox(clock);
         Check(inbox.Capture("viewer", "A", episodes[0].Id, null, "start"), "capture playback start");

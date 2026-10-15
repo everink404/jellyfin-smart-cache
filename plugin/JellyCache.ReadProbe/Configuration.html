@@ -47,7 +47,31 @@
                 var lines = [labels[s.State] || s.State];
                 if (s.LastError === 'unsupported-episode') lines.push('有剧集的季集信息或媒体版本不受支持，已保持原来源。');
                 if (s.Usage) lines.push('缓存 ' + (s.Usage.CompleteBytes / 1073741824).toFixed(2) + ' GiB，预留 ' + (s.Usage.ReservedBytes / 1073741824).toFixed(2) + ' GiB');
+                lines.push(s.LifecycleRouting ? '读取保护：按请求和任务结束释放，无法确认的读取继续保守保护。' : '读取保护：当前使用保守保护，缓存选中后保护至重启。');
+                if (s.Usage) lines.push('当前读取保护引用：' + (s.Usage.Leases || 0));
                 lines.push('保护至重启的缓存项：' + s.RetainedSelections);
+                var requestKinds = {'negotiation':'预协商','video-request':'视频请求','hls-request':'分段播放请求',
+                    'subtitle-request':'字幕请求','unknown-request':'未识别请求','background-or-unknown':'后台或未知读取'};
+                var jobStates = {'not-observed':'未观测转码作业','manager-unavailable':'作业信息不可用','observation-unavailable':'诊断暂不可用',
+                    'no-job-observed':'尚未查到作业','different-or-unknown-input':'作业输入未匹配','matching-job-exited':'匹配作业已退出',
+                    'matching-job-not-exited':'匹配作业尚未退出'};
+                if ((s.Protections || []).length) lines.push('保护明细（最多 50 项；作业退出不代表全部读取结束）：');
+                (s.Protections || []).forEach(function(p) {
+                    lines.push(p.Id.slice(0, 8) + '：' + (requestKinds[p.Request.Kind] || p.Request.Kind) + '，'
+                        + (jobStates[p.Request.JobState] || p.Request.JobState) + '；仍保护至重启');
+                });
+                if (s.LastAttempt) {
+                    var a = s.LastAttempt;
+                    var outcomes = {'ready':'缓存就绪','cancelled':'已取消','capacity-blocked':'空间或保护限制','copy-failed':'复制失败'};
+                    var reasons = {'paused':'暂停预取','demand-changed':'播放需求已改变','host-stopping':'服务正在关闭',
+                        'capacity-or-protection':'容量、磁盘余量或占用保护限制','source-invalid-or-unavailable':'来源不可用或文件不符合要求',
+                        'source-or-directory-missing':'来源或目录不存在','access-denied':'访问被拒绝','invalid-source':'来源配置无效',
+                        'disk-safety-margin':'磁盘安全余量不足','source-shortened':'来源文件变短','source-grew':'来源文件变大',
+                        'source-changed':'来源版本已改变','verification-failed':'完整性校验失败','io-error':'读取、写入或索引操作失败'};
+                    lines.push('最近复制：' + (outcomes[a.Outcome] || a.Outcome) + '；累计失败 ' + a.Failures + ' 次；耗时 ' + (a.ElapsedMilliseconds / 1000).toFixed(1) + ' 秒');
+                    if (a.Reason) lines.push('原因：' + (reasons[a.Reason] || a.Reason));
+                    if (a.ErrorType) lines.push('异常类型：' + a.ErrorType);
+                }
                 (s.Queue || []).forEach(function(q) { lines.push('第 ' + q.EpisodeNumber + ' 集：' + (jobs[q.State] || q.State)); });
                 lines.push('缓存选择：' + s.CacheSelections + '；回源选择：' + s.OriginSelections + '（选择次数不等于播放次数）');
                 el('#ReadStatus').textContent = lines.join('\n');

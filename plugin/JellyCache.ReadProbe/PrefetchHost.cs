@@ -9,6 +9,7 @@ using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.MediaInfo;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
 
 namespace JellyCache.ReadProbe;
 
@@ -31,7 +32,8 @@ public sealed record PrefetchSettings(bool Enabled, bool Automatic, bool Paused,
     }
 }
 public sealed record PrefetchStatus(string State, string? LastError, CacheUsage? Usage,
-    IReadOnlyList<QueueItem> Queue, int RetainedSelections, long CacheSelections, long OriginSelections);
+    IReadOnlyList<QueueItem> Queue, int RetainedSelections, long CacheSelections, long OriginSelections,
+    AttemptResult? LastAttempt = null, IReadOnlyList<ProtectionObservation>? Protections = null, bool LifecycleRouting = false);
 
 public sealed class PrefetchHost : BackgroundService
 {
@@ -43,6 +45,8 @@ public sealed class PrefetchHost : BackgroundService
     private readonly object gate = new();
     private readonly PlaybackInbox inbox = new();
     private readonly Dictionary<Guid, CacheLease> retained = [];
+    private readonly Dictionary<Guid, ProtectionObservation> protections = [];
+    private readonly Dictionary<string, (Guid Id, string Source)> selectedPaths = new(StringComparer.Ordinal);
     private readonly Dictionary<string, PlaybackEvent> viewers = [];
     private CacheStore? store;
     private PrefetchEngine? engine;
@@ -50,6 +54,7 @@ public sealed class PrefetchHost : BackgroundService
     private string state = "disabled";
     private string? lastError;
     private long hits, origins;
+    private AttemptResult? lastAttempt;
 
     public PrefetchHost(ISessionManager sessions, ILibraryManager library, RegistrationResult registration,
         ILogger<PrefetchHost> logger, PrefetchAccess access)
@@ -82,39 +87,110 @@ public sealed class PrefetchHost : BackgroundService
     {
         lock (gate)
         {
-            return new(state, lastError, store?.Usage, engine?.Snapshot() ?? [], retained.Count, hits, origins);
+            return new(state, lastError, store?.Usage, engine?.Snapshot() ?? [], retained.Count, hits, origins, lastAttempt,
+                protections.Values.Take(50).ToArray(), registration.LifecycleSupported);
         }
     }
 
-    public IReadOnlyList<MediaSourceInfo> Select(BaseItem item, IReadOnlyList<MediaSourceInfo> sources, string stage)
+    private void RecordAttempt(AttemptResult? result)
+    {
+        if (result is null) return;
+        lock (gate) lastAttempt = result;
+        logger.LogInformation("JellyCache prefetch copy: {Outcome}; item={Item}; reason={Reason}; error={ErrorType}; failures={Failures}; elapsedMs={ElapsedMilliseconds}; retryAfter={RetryAfter}",
+            result.Outcome, result.Id, result.Reason, result.ErrorType, result.Failures, result.ElapsedMilliseconds, result.RetryAfter);
+    }
+
+    public IReadOnlyList<MediaSourceInfo> Select(BaseItem item, IReadOnlyList<MediaSourceInfo> sources, string stage, HttpContext? request = null)
     {
         var config = settings();
         if (!config.Enabled || !config.Automatic || item is not Episode || sources.Count != 1
             || sources[0].Protocol != MediaProtocol.File || sources[0].Path != item.Path) return sources;
         try
         {
+            MediaSourceInfo selected;
             lock (gate)
             {
+                if (registration.LifecycleSupported && (stage == "negotiation" || request?.Request.RouteValues["controller"]?.ToString() == "MediaInfo"))
+                    return Origin(sources, stage); // Actual file requests resolve again; do not pin speculative candidates.
                 if (state is not ("ready" or "paused") || store is null || opened != config.Storage || !AllowedPath(item.Path, opened.MediaRoot))
                     return Origin(sources, stage);
                 if (!store.IsReady(item.Id, item.Path)) return Origin(sources, stage);
-                var selected = JsonSerializer.Deserialize<MediaSourceInfo>(JsonSerializer.Serialize(sources[0], JsonDefaults.Options), JsonDefaults.Options)!;
-                if (!retained.TryGetValue(item.Id, out var lease))
+                selected = JsonSerializer.Deserialize<MediaSourceInfo>(JsonSerializer.Serialize(sources[0], JsonDefaults.Options), JsonDefaults.Options)!;
+                var scope = registration.LifecycleSupported ? ReadLeaseScope.Operation.Value ?? request?.Features.Get<ReadLeaseScope>() : null;
+                CacheLease? lease;
+                if (scope is not null) lease = scope.TryAcquire(store, item.Id, item.Path);
+                else if (!retained.TryGetValue(item.Id, out lease))
                 {
                     if (retained.Count >= 1000) return Origin(sources, stage);
                     lease = store.TryAcquire(item.Id, item.Path);
                     if (lease is null) return Origin(sources, stage);
                     retained.Add(item.Id, lease);
                 }
+                if (lease is null) return Origin(sources, stage);
+                if (selectedPaths.Count >= 4096 && !selectedPaths.ContainsKey(lease.Path)) return Origin(sources, stage);
+                selectedPaths[lease.Path] = (item.Id, item.Path);
                 selected.Path = lease.Path;
                 selected.EncoderPath = null; selected.EncoderProtocol = null;
                 hits++;
-                logger.LogInformation("JellyCache prefetch selection: cache; stage={Stage}; item={Item}", stage, item.Id);
-                return [selected];
             }
+            // Never resolve host services or inspect a job while holding the cache state lock.
+            var observation = ReadObservation.Capture(request, selected.Path);
+            lock (gate)
+            {
+                if (retained.ContainsKey(item.Id))
+                {
+                    var previous = protections.GetValueOrDefault(item.Id);
+                    protections[item.Id] = new(item.Id, previous?.FirstStage ?? stage, stage,
+                        (previous?.Selections ?? 0) + 1, observation);
+                }
+            }
+            logger.LogInformation("JellyCache prefetch selection: cache; stage={Stage}; item={Item}; reader={Reader}; job={Job}; range={Range}; playbackIdPresent={PlaybackIdPresent}",
+                stage, item.Id, observation.Kind, observation.JobState, observation.RangeRequested, observation.HasPlaybackId);
+            return [selected];
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or JsonException or ObjectDisposedException)
         { lock (gate) return Origin(sources, stage); }
+    }
+
+    internal void PinPath(ReadLeaseScope scope, string? path)
+    {
+        if (path is null) return;
+        lock (gate)
+        {
+            if (store is not null && opened is not null && AllowedPath(path, opened.CacheRoot))
+            {
+                if (!selectedPaths.TryGetValue(path, out var known) || scope.TryAcquire(store, known.Id, known.Source) is null)
+                    throw new IOException("Selected cache cannot be protected for background reading.");
+            }
+        }
+    }
+
+    internal bool IsSelectedCache(string? path)
+    {
+        lock (gate) return path is not null && selectedPaths.ContainsKey(path);
+    }
+
+    internal void RetainUnknown(ReadLeaseScope scope)
+    {
+        var entries = scope.Detach();
+        lock (gate)
+        {
+            foreach (var entry in entries)
+            {
+                if (!retained.TryAdd(entry.Id, entry.Lease)) entry.Lease.Dispose();
+                else logger.LogWarning("JellyCache lifecycle retained: completion unconfirmed; item={Item}", entry.Id);
+            }
+        }
+        scope.Dispose();
+    }
+
+    internal void FinishedOperation()
+    {
+        lock (gate)
+        {
+            if (state == "stopped" && store is not null && store.Usage.Leases == 0)
+            { store.Dispose(); store = null; engine = null; }
+        }
     }
     private IReadOnlyList<MediaSourceInfo> Origin(IReadOnlyList<MediaSourceInfo> sources, string stage)
     {
@@ -178,6 +254,11 @@ public sealed class PrefetchHost : BackgroundService
         {
             while (!token.IsCancellationRequested)
             {
+                if (copying?.IsCompleted == true)
+                {
+                    RecordAttempt(await copying.ConfigureAwait(false));
+                    copying = null;
+                }
                 var config = settings();
                 var enabled = config.Enabled && config.Automatic && registration.Supported;
                 if (!enabled)
@@ -215,13 +296,6 @@ public sealed class PrefetchHost : BackgroundService
                             if (previous?.Strategy != config.Strategy || previous?.Ahead != config.Ahead)
                                 foreach (var ev in viewers.Values.ToArray()) Process(ev, config);
                             foreach (var ev in inbox.Drain()) Process(ev, config);
-                            if (copying?.IsCompleted == true)
-                            {
-                                var result = await copying.ConfigureAwait(false);
-                                if (result is not null)
-                                    logger.LogInformation("JellyCache prefetch copy: {Outcome}; item={Item}", result.Outcome, result.Id);
-                                copying = null;
-                            }
                             if (copying is null && !config.Paused)
                                 copying = Task.Run(() => engine!.RunNextAsync(token), token);
                             failedConfiguration = null;
@@ -245,12 +319,13 @@ public sealed class PrefetchHost : BackgroundService
             sessions.PlaybackStart -= Start; sessions.PlaybackProgress -= Progress; sessions.PlaybackStopped -= Stop;
             engine?.SetPaused(true);
             if (copying is not null)
-                try { await copying.ConfigureAwait(false); } catch (OperationCanceledException) { }
+                try { RecordAttempt(await copying.ConfigureAwait(false)); } catch (OperationCanceledException) { }
             lock (gate)
             {
                 state = "stopped";
                 foreach (var lease in retained.Values) lease.Dispose();
-                retained.Clear(); store?.Dispose(); store = null; engine = null;
+                retained.Clear(); protections.Clear(); selectedPaths.Clear();
+                if (store?.Usage.Leases == 0) { store.Dispose(); store = null; engine = null; }
             }
         }
     }

@@ -7,16 +7,18 @@ using MediaBrowser.Controller.Persistence;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.MediaInfo;
+using Microsoft.AspNetCore.Http;
 
 namespace JellyCache.ReadProbe;
 
 // Explicit forwarding: interface changes fail compilation instead of failing reflective invocation.
-public sealed class RoutingManager(IMediaSourceManager inner, ProbeState state, PrefetchAccess access = null) : IMediaSourceManager
+public sealed class RoutingManager(IMediaSourceManager inner, ProbeState state, PrefetchAccess access = null,
+    IHttpContextAccessor requestContext = null) : IMediaSourceManager
 {
     private IReadOnlyList<MediaSourceInfo> Select(BaseItem item, IReadOnlyList<MediaSourceInfo> sources, string stage)
     {
         var prefetch = access?.Host;
-        return prefetch?.AutomaticMode == true ? prefetch.Select(item, sources, stage) : state.Select(item, sources, stage);
+        return prefetch?.AutomaticMode == true ? prefetch.Select(item, sources, stage, requestContext?.HttpContext) : state.Select(item, sources, stage);
     }
     public async Task<IReadOnlyList<MediaSourceInfo>> GetPlaybackMediaSources(BaseItem item, User user, bool allowMediaProbe, bool enablePathSubstitution, CancellationToken token)
     {
