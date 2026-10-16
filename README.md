@@ -8,7 +8,7 @@
 
 公开仓库：[everink404/jellyfin-smart-cache](https://github.com/everink404/jellyfin-smart-cache)。[v0.1.0-test.1 测试安装包](https://github.com/everink404/jellyfin-smart-cache/releases/tag/v0.1.0-test.1) 已发布。
 
-在独立 Jellyfin 测试实例的插件仓库中添加以下地址。自动预取实验请选择 **`JellyCache single-plugin read test` 0.4.0.0**，升级后重启；保留原插件名与GUID以支持升级。旧的 `JellyCache experimental bridge` 是独立的事件桥接版。
+在独立 Jellyfin 测试实例的插件仓库中添加以下地址。自动预取实验请选择 **`JellyCache single-plugin read test` 0.4.1.0**，升级后重启；保留原插件名与GUID以支持升级。旧的 `JellyCache experimental bridge` 是独立的事件桥接版。
 
 **0.4.0.0 生命周期接入测试成品**沿用原 Pages 插件库，实际请求、ffmpeg、字幕与附件任务已接入占用保护和安全释放。完整隔离 Jellyfin 12.1 宿主验证及239项C#检查通过；NAS新版验收仍待进行。安装、证据、校验与回退见 [M1交付](docs/M1_DELIVERY.md)，线上核验见 STATUS。新安装默认关闭，升级保留配置；0.3.1和0.2旧包保留。
 
@@ -21,6 +21,8 @@ https://everink404.github.io/jellyfin-smart-cache/manifest.json
 此仓库清单专供实验测试，目标 Jellyfin 12.1.0 / .NET 10，默认禁用。读取测试版无需 Worker/FUSE，通过网页配置指定一集与完整本地副本，没有自动预取；当前用户容器已验证缓存转码和回源，直放未验证，见 [读取测试步骤](docs/READ_PROBE_TEST.md) 与 STATUS。旧桥接版的依赖见 [桥接说明](docs/JELLYFIN_PLUGIN.md)。暂不添加许可证。
 
 ## 资料导航
+
+- [M2安全管理交付](docs/M2_DELIVERY.md)：0.4.1.0安全清理、真实宿主证据、安装与回退；M2完整矩阵继续验收。
 
 - [单插件交付计划](docs/DELIVERY_PLAN.md)：M1可安装接入测试版、M2功能完善与真实验收、M3收益与最终验收基线；后续按交付批次推进。
 - [播放占用释放设计](docs/PLAYBACK_LEASE_PLAN.md)：协商、直接读取、转码与字幕的保护边界及实施门槛。

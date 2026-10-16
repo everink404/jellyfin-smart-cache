@@ -55,6 +55,28 @@ public sealed class PrefetchHost : BackgroundService
     private string? lastError;
     private long hits, origins;
     private AttemptResult? lastAttempt;
+    private readonly SemaphoreSlim maintenance = new(1, 1);
+
+    public async Task<CacheClearResult> ClearUnoccupiedAsync()
+    {
+        if (!await maintenance.WaitAsync(0).ConfigureAwait(false)) return new("busy");
+        try
+        {
+            CacheStore currentStore;
+            lock (gate)
+            {
+                var config = settings();
+                if (!config.Paused || state != "paused") return new("pause-required");
+                if (store is null || opened != config.Storage) return new("unavailable");
+                currentStore = store;
+            }
+            var result = await Task.Run(currentStore.ClearUnoccupied).ConfigureAwait(false);
+            logger.LogInformation("JellyCache cache clear: {State}; files={Files}; bytes={Bytes}; protected={Protected}; error={ErrorType}",
+                result.State, result.DeletedFiles, result.DeletedBytes, result.SkippedProtected, result.ErrorType);
+            return result;
+        }
+        finally { maintenance.Release(); }
+    }
 
     public PrefetchHost(ISessionManager sessions, ILibraryManager library, RegistrationResult registration,
         ILogger<PrefetchHost> logger, PrefetchAccess access)
@@ -320,13 +342,18 @@ public sealed class PrefetchHost : BackgroundService
             engine?.SetPaused(true);
             if (copying is not null)
                 try { RecordAttempt(await copying.ConfigureAwait(false)); } catch (OperationCanceledException) { }
-            lock (gate)
+            await maintenance.WaitAsync().ConfigureAwait(false);
+            try
             {
-                state = "stopped";
-                foreach (var lease in retained.Values) lease.Dispose();
-                retained.Clear(); protections.Clear(); selectedPaths.Clear();
-                if (store?.Usage.Leases == 0) { store.Dispose(); store = null; engine = null; }
+                lock (gate)
+                {
+                    state = "stopped";
+                    foreach (var lease in retained.Values) lease.Dispose();
+                    retained.Clear(); protections.Clear(); selectedPaths.Clear();
+                    if (store?.Usage.Leases == 0) { store.Dispose(); store = null; engine = null; }
+                }
             }
+            finally { maintenance.Release(); }
         }
     }
 }

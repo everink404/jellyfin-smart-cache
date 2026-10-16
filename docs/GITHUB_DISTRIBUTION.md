@@ -33,6 +33,8 @@ Pages 从 `codex/plugin-distribution` 分支根目录发布，仅包含 `.nojeky
 
 ## 当前M1分发
 
+2026-10-16后续M2成品：0.4.1.0安全清理，标签v0.4.1-management-test.1，沿用原仓库及Pages分支并保留0.4.0。安装／校验／证据见[M2交付](M2_DELIVERY.md)，在线结果以STATUS为准；以下M1说明为此前成品。
+
 0.4.0.0沿用main源码和codex/plugin-distribution静态分发分支。版本目录v0.4.0-lifecycle-test.1，旧包保留，不创建新Release或新入口。实际宿主、校验和回退见[M1交付](M1_DELIVERY.md)，在线核验见STATUS；以下0.3.1及首次Release说明为历史。
 
 ## 安装测试

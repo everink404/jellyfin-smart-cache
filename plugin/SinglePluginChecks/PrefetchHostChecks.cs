@@ -84,6 +84,7 @@ internal static class PrefetchHostChecks
             foreach (var episode in episodes) _ = PrefetchHost.Describe(episode, media);
             await host.StartAsync(default);
             await Wait(() => host.Snapshot().State == "ready", "host initialized");
+            Check((await host.ClearUnoccupiedAsync()).State == "pause-required", "cleanup requires saved host pause");
             Check(sessionProxy.Events.ContainsKey("PlaybackStart"), "actual hosted service subscribes playback");
             sessionProxy.Raise("PlaybackStart", Args(episodes[0], "play1"));
             await Wait(() => host.Snapshot().Queue.Count == 2 && host.Snapshot().Queue.All(q => q.State == "ready"), "real season adapter and events produce two verified copies");
@@ -151,6 +152,11 @@ internal static class PrefetchHostChecks
             settings = settings with { Paused = true };
             await Wait(() => host.Snapshot().State == "paused", "pause reaches host");
             Check(host.Select(episodes[1], before, "stream-resolution").Single().Path == hit.Path, "pause preserves cache reading");
+            var clear = await host.ClearUnoccupiedAsync();
+            Check(clear is { State: "completed", DeletedFiles: 1, SkippedProtected: 1 }, "paused host clears unoccupied item and skips conservative pin");
+            Check(File.Exists(hit.Path) && host.Snapshot().Usage!.Leases == 1, "cleanup preserves selected playback input and lease");
+            Check(host.Select(episodes[2], Sources(episodes[2]), "stream-resolution").Single().Path == episodes[2].Path,
+                "cleared item safely falls back to unchanged origin");
             settings = settings with { Enabled = false };
             Check(host.Select(episodes[1], before, "stream-resolution").Single().Path == episodes[1].Path, "disable bypass is immediate");
             await Wait(() => host.Snapshot().State == "disabled" && host.Snapshot().Queue.Count == 0, "disable clears demand");

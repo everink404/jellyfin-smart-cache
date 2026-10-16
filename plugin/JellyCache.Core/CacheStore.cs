@@ -23,6 +23,8 @@ public sealed record SourceVersion(long Length, long ModifiedTicks)
 }
 
 public sealed record CacheUsage(long CompleteBytes, long ReservedBytes, int CompleteFiles, int Leases);
+public sealed record CacheClearResult(string State, int DeletedFiles = 0, long DeletedBytes = 0,
+    int SkippedProtected = 0, string? ErrorType = null);
 public enum CopyOutcome { Published, AlreadyPresent, CapacityBlocked }
 
 // Dedicated, single-owner directory. This is not yet wired into Jellyfin playback.
@@ -38,7 +40,7 @@ public sealed class CacheStore : IDisposable
     private readonly Dictionary<Guid, int> pins = [];
     private List<Entry> entries = [];
     private long sequence;
-    private bool copying, disposed;
+    private bool copying, clearing, disposed;
     private sealed record Entry(Guid Id, string Source, SourceVersion Version, bool Complete,
         string Hash, SourceVersion? LocalVersion, long LastUse);
 
@@ -229,6 +231,41 @@ public sealed class CacheStore : IDisposable
         }
     }
 
+    public CacheClearResult ClearUnoccupied()
+    {
+        if (!writer.Wait(0)) return new("busy");
+        var deleted = 0; long bytes = 0; var skipped = 0;
+        try
+        {
+            Guid[] candidates;
+            lock (gate)
+            {
+                EnsureOpen(); clearing = true;
+                ValidateIndexAndDirectory(); // Refuse foreign entries before deleting anything.
+                candidates = entries.Where(e => e.Complete).Select(e => e.Id).ToArray();
+            }
+            foreach (var id in candidates)
+            {
+                // Release the store lock between files so new readers can acquire protection.
+                lock (gate)
+                {
+                    var entry = entries.SingleOrDefault(e => e.Id == id && e.Complete);
+                    if (entry is null) continue;
+                    if (pins.ContainsKey(id)) { skipped++; continue; }
+                    Delete(entry); deleted++; bytes += entry.Version.Length;
+                }
+            }
+            return new("completed", deleted, bytes, skipped);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        { return new("failed", deleted, bytes, skipped, ex.GetType().Name); }
+        finally
+        {
+            lock (gate) clearing = false;
+            writer.Release();
+        }
+    }
+
     private void Release(Guid id)
     {
         lock (gate)
@@ -320,7 +357,7 @@ public sealed class CacheStore : IDisposable
         lock (gate)
         {
             if (disposed) return;
-            if (copying || pins.Count != 0) throw new InvalidOperationException("Stop copies and release playback leases before closing.");
+            if (copying || clearing || pins.Count != 0) throw new InvalidOperationException("Stop copies, cleanup and release playback leases before closing.");
             disposed = true;
             ownership.Dispose();
         }

@@ -2,7 +2,7 @@
 <html><head><meta charset="utf-8"><title>JellyCache 预取测试</title></head><body>
 <div id="JellyCacheReadPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
 <div data-role="content"><div class="content-primary">
-<h2>JellyCache 单插件预取测试 0.3.1</h2>
+<h2>JellyCache 单插件预取测试 0.4.1</h2>
 <p>播放当前集时，后台缓存同季后续集；完整校验后，新播放优先读取缓存。默认后续两集。</p>
 <form id="JellyCacheReadForm">
 <div class="checkboxContainer"><label class="emby-checkbox-label"><input id="ReadEnabled" type="checkbox" is="emby-checkbox"><span>启用插件</span></label></div>
@@ -17,7 +17,7 @@
 <div class="inputContainer"><label for="Strategy">预取策略</label><select id="Strategy"><option value="next">下一集</option><option value="ahead">后续 N 集</option><option value="season">本季剩余集</option></select></div>
 <div class="inputContainer"><label class="inputLabel" for="Ahead">后续集数 N</label><input id="Ahead" is="emby-input" type="number" min="1" max="50" step="1"></div>
 <div class="checkboxContainer"><label class="emby-checkbox-label"><input id="PausePrefetch" type="checkbox" is="emby-checkbox"><span>暂停预取（已有缓存仍可播放）</span></label></div>
-<p>本测试版选中过的缓存保护至 Jellyfin 重启；空间不足时停止新增预取。调整目录、容量、余量或速率后须重启 Jellyfin。</p>
+<p>已识别的官方服务按实际请求和任务结束释放保护；无法确认结束的读取继续保护至重启。空间不足时停止新增预取。调整目录、容量、余量或速率后须重启 Jellyfin。</p>
 </div>
 <div id="ManualSettings">
 <p>准备与原视频完全相同的本地文件；校验会完整读取两份文件。</p>
@@ -29,6 +29,9 @@
 <p>保存并确认状态后，再开始新的播放。关闭插件后，停止旧播放再重新播放以验证回源。</p>
 <button id="ReadRefresh" is="emby-button" type="button" class="raised"><span>刷新状态</span></button>
 <pre id="ReadStatus" style="white-space:pre-wrap"></pre>
+<button id="ClearUnoccupied" is="emby-button" type="button" class="raised"><span>清理未占用缓存</span></button>
+<p>先保存“暂停预取”，等待状态已暂停且复制结束。清理跳过正在使用的缓存，不删除原视频；恢复预取后当前窗口可能重新下载。</p>
+<pre id="ClearStatus" style="white-space:pre-wrap"></pre>
 </div></div>
 <script>
 (function () {
@@ -99,6 +102,21 @@
         }).catch(error);
     });
     el('#ReadRefresh').addEventListener('click', refresh);
+    el('#ClearUnoccupied').addEventListener('click', function() {
+        if (!el('#AutoEnabled').checked || !el('#PausePrefetch').checked) {
+            el('#ClearStatus').textContent = '请先启用自动模式，保存暂停预取并等待在途复制结束。'; return;
+        }
+        if (!window.confirm('清理受管目录内未占用的完整缓存？原视频和正在使用的缓存会保留。')) return;
+        var button = el('#ClearUnoccupied'); button.disabled = true;
+        ApiClient.ajax({type:'POST', url:ApiClient.getUrl('JellyCacheReadProbe/ClearUnoccupied'), dataType:'json'}).then(function(r) {
+            var labels = {'completed':'清理完成','busy':'复制或清理尚未结束，请稍后重试',
+                'pause-required':'请先保存暂停预取并等待状态已暂停','unavailable':'缓存存储尚未就绪','failed':'清理未全部完成，请检查日志'};
+            el('#ClearStatus').textContent = (labels[r.State] || r.State) + '；已删除 ' + r.DeletedFiles + ' 项，'
+                + (r.DeletedBytes / 1073741824).toFixed(2) + ' GiB；跳过占用 ' + r.SkippedProtected + ' 项。';
+            return refresh();
+        }).catch(function() { el('#ClearStatus').textContent = '清理请求失败，请刷新状态并检查日志。'; })
+            .finally(function() { button.disabled = false; });
+    });
     el('#AutoEnabled').addEventListener('change', mode);
     el('#JellyCacheReadForm').addEventListener('submit', function(e) {
         e.preventDefault(); Dashboard.showLoadingMsg();

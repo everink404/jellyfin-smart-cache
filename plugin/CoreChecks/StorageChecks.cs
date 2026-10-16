@@ -160,6 +160,39 @@ internal static class StorageChecks
         File.WriteAllText(Path.Combine(recovery, "index.json"), "not-json");
         Reject<System.Text.Json.JsonException>(() => new CacheStore(recovery, fast), "broken index not silently adopted");
         Check(File.Exists(Path.Combine(recovery, aid.ToString("N") + ".media")), "broken index preserves existing media");
+        var clearRoot = Root("clear");
+        using (var store = new CacheStore(clearRoot, fast))
+        {
+            await store.CopyAsync(aid, a); await store.CopyAsync(bid, b);
+            using (var active = store.TryAcquire(aid, a)!)
+            {
+                var result = store.ClearUnoccupied();
+                Check(result.State == "completed" && result.DeletedFiles == 1 && result.DeletedBytes == size
+                    && result.SkippedProtected == 1, "cleanup deletes only unoccupied indexed entries");
+                Check(store.Usage.CompleteFiles == 1 && store.Usage.Leases == 1, "cleanup preserves active lease accounting");
+                Check(active.Stream.ReadByte() == bytes[0], "active reader remains readable after cleanup");
+                Check(File.ReadAllBytes(a).SequenceEqual(bytes) && File.ReadAllBytes(b).SequenceEqual(bytes), "cleanup never touches source files");
+            }
+            Check(store.ClearUnoccupied().DeletedFiles == 1 && store.Usage.CompleteFiles == 0, "released item can be cleared without restart");
+            Check(store.ClearUnoccupied().DeletedFiles == 0, "repeated empty cleanup is harmless");
+            await store.CopyAsync(aid, a);
+            File.WriteAllText(Path.Combine(clearRoot, "unknown.keep"), "preserve");
+            var refused = store.ClearUnoccupied();
+            Check(refused.State == "failed" && refused.DeletedFiles == 0 && store.IsReady(aid, a), "foreign file refuses cleanup before deleting owned data");
+            Check(File.ReadAllText(Path.Combine(clearRoot, "unknown.keep")) == "preserve", "cleanup preserves unknown files");
+            File.Delete(Path.Combine(clearRoot, "unknown.keep"));
+        }
+        using (var reopened = new CacheStore(clearRoot, fast))
+            Check(reopened.IsReady(aid, a) && !reopened.IsReady(bid, b), "cleanup journal persists across restart");
+        using (var store = new CacheStore(Root("clear-copy"), fast with { BytesPerSecond = size }))
+        {
+            using var cancel = new CancellationTokenSource();
+            var task = store.CopyAsync(aid, a, cancel.Token);
+            await Task.Delay(75);
+            Check(store.ClearUnoccupied().State == "busy" && store.Usage.ReservedBytes == size, "cleanup refuses in-flight copy and preserves reservation");
+            cancel.Cancel();
+            await RejectAsync<OperationCanceledException>(async () => await task, "copy can still cancel after busy cleanup");
+        }
         Console.WriteLine($"{count} cache storage checks passed. Fixtures retained under {testRoot}");
         return count;
     }

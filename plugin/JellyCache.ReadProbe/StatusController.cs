@@ -13,4 +13,6 @@ public sealed class StatusController(ProbeState state, PrefetchHost prefetch) : 
     public object Status() => state.Snapshot();
     [HttpGet("PrefetchStatus")]
     public object PrefetchStatus() => prefetch.Snapshot();
+    [HttpPost("ClearUnoccupied")]
+    public Task<JellyCache.Core.CacheClearResult> ClearUnoccupied() => prefetch.ClearUnoccupiedAsync();
 }
